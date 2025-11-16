@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Home - Meow Yourself</title>
+        <style>
+            @import url(https://fonts.googleapis.com/css2?family=Lato&display=swap);
+            @import url(https://fonts.googleapis.com/css2?family=Open+Sans&display=swap);
+            @import url(https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200);
+            *, :after, :before {
+                border: 0 solid #e5e7eb;
+                box-sizing: border-box;
+            }
+            body {
+                line-height: inherit;
+                margin: 0;
+                overflow-x: hidden;
+                background-color: #f1e7e0;
+                background-image: linear-gradient(160deg, #f1e7e0 0%, #e7d2c5 45%, #f8f1eb 100%);
+            }
+            #webcrumbs .warm-shell {
+                background: linear-gradient(180deg, #f9f0e9 0%, #f1e7e0 55%, #e7d4c6 100%);
+            }
+            #webcrumbs .warm-surface {
+                background: linear-gradient(160deg, rgba(249, 239, 233, 0.92) 0%, rgba(236, 214, 200, 0.94) 100%);
+            }
+            #webcrumbs .warm-cta {
+                background: linear-gradient(135deg, #f4d7c3 0%, #e8c3ad 100%);
+                color: #5b4032;
+                border: 1px solid rgba(205, 175, 154, 0.6);
+            }
+            #webcrumbs .warm-cta:hover {
+                background: linear-gradient(135deg, #ebcdb7 0%, #dfb49a 100%);
+                color: #4b3326;
+            }
+            #webcrumbs .warm-divider {
+                border-bottom: 1px solid rgba(206, 181, 165, 0.6);
+            }
+            #webcrumbs .warm-outline {
+                border: 1px solid rgba(207, 179, 163, 0.75);
+            }
+            #webcrumbs .cta-offset {
+                margin-top: 32px; /* #1005庭婕這裡拉開提醒與按鈕的距離 */
+            }
+            #webcrumbs .warm-menu {
+                background-color: rgba(210, 171, 148, 0.9);
+                border: none;
+                box-shadow: 0 6px 16px rgba(110, 83, 63, 0.16);
+                width: auto !important; /* 讓選單依內容縮小，覆蓋原本 w-40 設定 */
+                min-width: 88px; /* 預留基本寬度以避免字太擠 */
+                border-radius: 9999px; /* 改成橢圓 pill 造型 */
+                padding: 4px 12px; /* 收緊上下左右空間 */
+            }
+            #webcrumbs .warm-menu-link {
+                color: #4d3528;
+                text-align: center; /* 讓文字置中與膠囊對齊 */
+                padding: 4px 0 !important; /* 讓文字與底色距離更靠近，覆蓋 px-4/py-2 */
+                font-weight: 600;
+            }
+            #webcrumbs .warm-menu-link:hover {
+                background-color: transparent;
+                color: #3a271c;
+            }
+            img {
+                max-width: 100%;
+                height: auto;
+            }
+            #webcrumbs .cat-carousel {
+                position: relative;
+                border-radius: 24px;
+                overflow: hidden;
+                box-shadow: 0 14px 32px rgba(63, 43, 30, 0.15);
+                aspect-ratio: 4 / 3;
+                max-width: min(360px, 90vw);
+                width: 100%;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            #webcrumbs .carousel-track {
+                position: relative;
+                width: 100%;
+                height: 100%;
+            }
+            #webcrumbs .carousel-slide {
+                position: absolute;
+                inset: 0;
+                opacity: 0;
+                transition: opacity 0.6s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 8px;
+                isolation: isolate;
+            }
+            #webcrumbs .carousel-slide.active {
+                opacity: 1;
+            }
+            #webcrumbs .carousel-slide::before {
+                content: '';
+                position: absolute;
+                inset: -8px;
+                background-image: var(--slide-bg);
+                background-size: cover;
+                background-position: center;
+                filter: blur(20px) brightness(0.95);
+                transform: scale(1.015);
+                z-index: 0;
+            }
+            #webcrumbs .carousel-slide img {
+                position: relative;
+                z-index: 1;
+                width: 100%;
+                height: 100%;
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
+                border-radius: 16px;
+                box-shadow: 0 8px 20px rgba(63, 43, 30, 0.14);
+            }
+            #webcrumbs .carousel-dots {
+                position: absolute;
+                display: flex;
+                gap: 8px;
+                left: 50%;
+                bottom: 16px;
+                transform: translateX(-50%);
+                z-index: 2;
+            }
+            #webcrumbs .carousel-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 9999px;
+                background-color: rgba(255, 255, 255, 0.4);
+                border: none;
+                padding: 0;
+                cursor: pointer;
+                transition: background-color 0.3s ease, transform 0.3s ease;
+            }
+            #webcrumbs .carousel-dot:focus {
+                outline: 2px solid rgba(255, 255, 255, 0.8);
+                outline-offset: 2px;
+            }
+            #webcrumbs .carousel-dot.active {
+                background-color: rgba(255, 255, 255, 0.9);
+                transform: scale(1.2);
+            }
+            .material-symbols-outlined {
+                font-family: 'Material Symbols Outlined';
+                font-weight: normal;
+                font-style: normal;
+                font-size: 24px;
+                line-height: 1;
+                letter-spacing: normal;
+                text-transform: none;
+                display: inline-block;
+                white-space: nowrap;
+                word-wrap: normal;
+                direction: ltr;
+                font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            }
+            #webcrumbs .absolute { position: absolute; }
+            #webcrumbs .relative { position: relative; }
+            #webcrumbs .right-0 { right: 0; }
+            #webcrumbs .z-10 { z-index: 10; }
+            #webcrumbs .mx-auto { margin-left: auto; margin-right: auto; }
+            #webcrumbs .mb-1 { margin-bottom: 4px; }
+            #webcrumbs .mb-10 { margin-bottom: 40px; }
+            #webcrumbs .mb-2 { margin-bottom: 8px; }
+            #webcrumbs .mb-4 { margin-bottom: 16px; }
+            #webcrumbs .mb-6 { margin-bottom: 24px; }
+            #webcrumbs .mb-8 { margin-bottom: 32px; }
+            #webcrumbs .ml-1 { margin-left: 4px; }
+            #webcrumbs .ml-2 { margin-left: 8px; }
+            #webcrumbs .mr-1 { margin-right: 4px; }
+            #webcrumbs .mr-2 { margin-right: 8px; }
+            #webcrumbs .mt-2 { margin-top: 8px; }
+            #webcrumbs .mt-20 { margin-top: 80px; }
+            #webcrumbs .mt-6 { margin-top: 24px; }
+            #webcrumbs .block { display: block; }
+            #webcrumbs .flex { display: flex; }
+            #webcrumbs .grid { display: grid; }
+            #webcrumbs .hidden { display: none; }
+            #webcrumbs .h-14 { height: 56px; }
+            #webcrumbs .h-4 { height: 16px; }
+            #webcrumbs .h-6 { height: 24px; }
+            #webcrumbs .h-64 { height: 256px; }
+            #webcrumbs .h-8 { height: 32px; }
+            #webcrumbs .h-full { height: 100%; }
+            #webcrumbs .min-h-\[80vh\] { min-height: 80vh; }
+            #webcrumbs .w-14 { width: 56px; }
+            #webcrumbs .w-4 { width: 16px; }
+            #webcrumbs .w-6 { width: 24px; }
+            #webcrumbs .w-8 { width: 32px; }
+            #webcrumbs .w-40 { width: 160px; }
+            #webcrumbs .w-full { width: 100%; }
+            #webcrumbs .max-w-\[1200px\] { max-width: min(1200px, 100%); }
+            #webcrumbs .max-w-2xl { max-width: min(42rem, 100%); }
+            #webcrumbs .max-w-3xl { max-width: min(48rem, 100%); }
+            #webcrumbs .max-w-4xl { max-width: min(56rem, 100%); }
+            #webcrumbs .max-w-5xl { max-width: min(64rem, 100%); }
+            #webcrumbs .max-w-md { max-width: min(28rem, 100%); }
+            #webcrumbs .transform {
+                transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate))
+                    skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+            }
+            #webcrumbs .cursor-pointer { cursor: pointer; }
+            #webcrumbs .list-none { list-style-type: none; }
+            #webcrumbs .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+            #webcrumbs .flex-row { flex-direction: row; }
+            #webcrumbs .flex-col { flex-direction: column; }
+            #webcrumbs .items-center { align-items: center; }
+            #webcrumbs .justify-center { justify-content: center; }
+            #webcrumbs .justify-between { justify-content: space-between; }
+            #webcrumbs .gap-4 { gap: 16px; }
+            #webcrumbs .gap-8 { gap: 32px; }
+            #webcrumbs :is(.space-x-4 > :not([hidden]) ~ :not([hidden])) {
+                --tw-space-x-reverse: 0;
+                margin-left: calc(16px * (1 - var(--tw-space-x-reverse)));
+                margin-right: calc(16px * var(--tw-space-x-reverse));
+            }
+            #webcrumbs :is(.space-x-6 > :not([hidden]) ~ :not([hidden])) {
+                --tw-space-x-reverse: 0;
+                margin-left: calc(24px * (1 - var(--tw-space-x-reverse)));
+                margin-right: calc(24px * var(--tw-space-x-reverse));
+            }
+            #webcrumbs :is(.space-y-3 > :not([hidden]) ~ :not([hidden])) {
+                --tw-space-y-reverse: 0;
+                margin-bottom: calc(12px * var(--tw-space-y-reverse));
+                margin-top: calc(12px * (1 - var(--tw-space-y-reverse)));
+            }
+            #webcrumbs .overflow-hidden { overflow: hidden; }
+            #webcrumbs .rounded { border-radius: 12px; }
+            #webcrumbs .rounded-full { border-radius: 9999px; }
+            #webcrumbs .rounded-lg { border-radius: 24px; }
+            #webcrumbs .border { border-width: 1px; }
+            #webcrumbs .border-b { border-bottom-width: 1px; }
+            #webcrumbs .border-gray-100 { border-color: rgb(243 244 246); }
+            #webcrumbs .border-gray-200 { border-color: rgb(229 231 235); }
+            #webcrumbs .bg-gray-100 { background-color: rgb(243 244 246); }
+            #webcrumbs .bg-gray-50 { background-color: rgb(249 250 251); }
+            #webcrumbs .bg-gray-700 { background-color: rgb(55 65 81); }
+            #webcrumbs .bg-white { background-color: rgb(255 255 255); }
+            #webcrumbs .bg-gradient-to-b { background-image: linear-gradient(to bottom, var(--tw-gradient-stops)); }
+            #webcrumbs .from-transparent { --tw-gradient-from: transparent; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+            #webcrumbs .to-gray-900\/50 { --tw-gradient-to: rgba(17, 24, 39, 0.5); }
+            #webcrumbs .object-cover { object-fit: cover; }
+            #webcrumbs .p-2 { padding: 8px; }
+            #webcrumbs .p-4 { padding: 16px; }
+            #webcrumbs .p-6 { padding: 24px; }
+            #webcrumbs .px-4 { padding-left: 16px; padding-right: 16px; }
+            #webcrumbs .px-6 { padding-left: 24px; padding-right: 24px; }
+            #webcrumbs .py-1 { padding-bottom: 4px; padding-top: 4px; }
+            #webcrumbs .py-2 { padding-bottom: 8px; padding-top: 8px; }
+            #webcrumbs .py-4 { padding-bottom: 16px; padding-top: 16px; }
+            #webcrumbs .pt-0 { padding-top: 0; }
+            #webcrumbs .text-center { text-align: center; }
+            #webcrumbs .font-sans { font-family: Open Sans, ui-sans-serif, system-ui, sans-serif; }
+            #webcrumbs .text-2xl { font-size: 24px; line-height: 31.2px; }
+            #webcrumbs .text-4xl { font-size: 36px; line-height: 41.4px; }
+            #webcrumbs .text-lg { font-size: 18px; line-height: 27px; }
+            #webcrumbs .text-sm { font-size: 14px; line-height: 21px; }
+            #webcrumbs .text-xl { font-size: 20px; line-height: 28px; }
+            #webcrumbs .font-bold { font-weight: 700; }
+            #webcrumbs .font-medium { font-weight: 500; }
+            #webcrumbs .text-gray-600 { color: rgb(75 85 99); }
+            #webcrumbs .text-gray-700 { color: rgb(55 65 81); }
+            #webcrumbs .text-gray-800 { color: rgb(31 41 55); }
+            #webcrumbs .text-white { color: rgb(255 255 255); }
+            #webcrumbs .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+            #webcrumbs .transition-all { transition-duration: 0.15s; transition-property: all; }
+            #webcrumbs .transition-colors { transition-duration: 0.15s; transition-property: color, background-color, border-color; }
+            #webcrumbs .transition-transform { transition-duration: 0.15s; transition-property: transform; }
+            #webcrumbs .duration-200 { transition-duration: 0.2s; }
+            #webcrumbs .duration-300 { transition-duration: 0.3s; }
+            #webcrumbs .duration-500 { transition-duration: 0.5s; }
+            #webcrumbs .hover\:scale-105:hover { --tw-scale-x: 1.05; --tw-scale-y: 1.05; }
+            #webcrumbs .hover\:scale-\[1.02\]:hover { --tw-scale-x: 1.02; --tw-scale-y: 1.02; }
+            #webcrumbs .hover\:border-gray-400:hover { border-color: rgb(156 163 175); }
+            #webcrumbs .hover\:bg-gray-50:hover { background-color: rgb(249 250 251); }
+            #webcrumbs .hover\:bg-gray-800:hover { background-color: rgb(31 41 55); }
+            #webcrumbs .hover\:text-gray-700:hover { color: rgb(55 65 81); }
+            #webcrumbs .hover\:shadow:hover { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1); }
+            #webcrumbs .focus\:outline-none:focus { outline: 2px solid transparent; }
+            #webcrumbs .focus\:ring-1:focus { box-shadow: 0 0 0 1px rgb(156 163 175); }
+            #webcrumbs .focus\:ring-gray-400:focus { --tw-ring-color: rgb(156 163 175); }
+            #webcrumbs .primary-cta { border-radius: 20px; }
+            #webcrumbs .mobile-cat-section { margin-top: 40px; padding: 0 12px; }
+            #webcrumbs .mobile-cat-card {
+                background: linear-gradient(180deg, #f7ece4 0%, #f1e7e0 55%, #e6d1c4 100%);
+                border-radius: 28px;
+                padding: 28px 20px;
+                box-shadow: 0 22px 46px rgba(110, 83, 63, 0.14);
+            }
+            #webcrumbs .mobile-cat-card h2 {
+                font-size: 22px;
+                font-weight: 700;
+                color: #1f2937;
+                text-align: center;
+                margin: 0 0 12px 0;
+            }
+            #webcrumbs .mobile-cat-card p {
+                color: #4b5563;
+                font-size: 15px;
+                line-height: 1.6;
+                text-align: center;
+                margin: 0 auto;
+                max-width: 260px;
+            }
+            #webcrumbs .mobile-cat-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+                gap: 12px;
+                margin-top: 24px;
+            }
+            #webcrumbs .mobile-cat-grid img {
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                object-fit: cover;
+                border-radius: 16px;
+                box-shadow: 0 6px 12px rgba(15, 23, 42, 0.08);
+            }
+            #webcrumbs .mobile-explore-btn {
+                margin-top: 28px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                padding: 14px 18px;
+                background: linear-gradient(135deg, #f4d7c3 0%, #e8c3ad 100%);
+                color: #5b4032;
+                border-radius: 9999px;
+                font-size: 16px;
+                font-weight: 600;
+                box-shadow: 0 16px 32px rgba(110, 83, 63, 0.18);
+            }
+            #webcrumbs .mobile-explore-btn .material-symbols-outlined {
+                margin-right: 8px;
+                font-size: 22px;
+            }
+            /* 移除所有連結的底線 */
+            #webcrumbs a,
+            #webcrumbs a:link,
+            #webcrumbs a:visited,
+            #webcrumbs a:hover,
+            #webcrumbs a:focus,
+            #webcrumbs a:active {
+                text-decoration: none !important;
+            }
+            @media (max-width: 640px) {
+                #webcrumbs .sm\:p-4 { padding: 16px; }
+                #webcrumbs .sm\:px-2 { padding-left: 8px; padding-right: 8px; }
+                #webcrumbs .sm\:text-3xl { font-size: 30px; line-height: 36px; }
+                #webcrumbs .sm\:text-lg { font-size: 16px; line-height: 24px; }
+                #webcrumbs .cat-carousel { aspect-ratio: 3 / 4; max-width: min(280px, 90vw); }
+                #webcrumbs .sm\:h-48 { height: 192px; }
+                #webcrumbs .sm\:gap-4 { gap: 16px; }
+                #webcrumbs .sm\:max-w-full { max-width: 100%; }
+                #webcrumbs .primary-cta {
+                    border-radius: 9999px;
+                    background-color: #1f2937 !important;
+                    box-shadow: 0 16px 32px rgba(17, 24, 39, 0.2);
+                    font-size: 18px;
+                }
+                #webcrumbs .primary-cta .material-symbols-outlined { font-size: 22px; }
+                #webcrumbs .mobile-cat-section { margin-top: 32px; }
+                #webcrumbs .mobile-cat-card { padding: 28px 16px; }
+                #webcrumbs .mobile-cat-grid { grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); }
+            }
+            @media (min-width: 768px) {
+                #webcrumbs .md\:flex { display: flex; }
+                #webcrumbs .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+                #webcrumbs .md\:text-5xl { font-size: 48px; line-height: 52.8px; }
+                #webcrumbs .mobile-only { display: none; }
+            }
+            @media (max-width: 1024px) {
+                #webcrumbs .lg\:max-w-4xl { max-width: 56rem; }
+                #webcrumbs .lg\:max-w-3xl { max-width: 48rem; }
+            }
+        </style>
+        <!-- GALING 10/5 新增manifest.json -->
+        <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+        <link rel="icon" href="https://cdn.webcrumbs.org/assets/images/landing/favicon.ico" />
+        <link rel="apple-touch-icon" sizes="192x192" href="https://cdn.webcrumbs.org/assets/images/landing/logo192.png" />
+        <link rel="apple-touch-icon" sizes="512x512" href="https://cdn.webcrumbs.org/assets/images/landing/logo512.png" />
+        <meta name="theme-color" content="#ffffff" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Meow Yourself" />
+    </head>
+    <body>
+        <div id="webcrumbs">
+            <div class="max-w-[1200px] w-full font-sans mx-auto warm-shell">
+                <header class="py-4 px-6 sm:px-2 flex justify-between items-center warm-shell warm-divider">
+                    <div class="flex items-center">
+                        <img src="{{ url_for('static', filename='cat_cards/images/image-removebg-logo.png') }}" alt="Meow Yourself Logo" style="height: calc(0.96rem + 1.6cm); width: auto;" /> <!-- #1005庭婕調整Logo大小並移除文字 -->
+                    </div>
+                    <nav class="hidden md:flex space-x-6">
+                        <a href="{{ url_for('home') }}" class="hover:text-gray-700 transition-colors duration-200 flex items-center">
+                            <span class="material-symbols-outlined mr-1">home</span> 首頁
+                        </a>
+                        <a href="{{ url_for('featured_cats') }}" class="hover:text-gray-700 transition-colors duration-200 flex items-center">
+                            <span class="material-symbols-outlined mr-1">pets</span> 探索我們的九宮格貓咪
+                        </a>
+                    </nav>
+                    <div class="flex items-center">
+                        <details class="relative">
+                            <summary class="list-none flex items-center cursor-pointer">
+                                <img src="https://images.unsplash.com/photo-1511367461989-f85a21fda167?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3MzkyNDZ8MHwxfHNlYXJjaHwxfHxwcm9maWxlfGVufDB8fHx8MTc1ODI4MTc2OXww&ixlib=rb-4.1.0&q=80&w=1080" class="h-8 w-8 rounded-full border border-gray-200 hover:border-gray-400 transition-all duration-200" alt="Profile" />
+                            </summary>
+                            <div id="profile-menu" class="absolute right-0 mt-2 w-40 rounded shadow-sm py-1 z-10 border border-gray-100 warm-surface warm-menu">
+                                {% if is_logged_in %}
+                                <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm transition-colors duration-200 warm-menu-link">登出</a>
+                                {% else %}
+                                <a href="{{ url_for('login') }}" class="block px-4 py-2 text-sm transition-colors duration-200 warm-menu-link">登入</a>
+                                {% endif %}
+                            </div>
+                        </details>
+                    </div>
+                </header>
+                <main class="p-6 sm:p-4">
+                    <div class="flex flex-col items-center justify-center w-full max-w-4xl sm:max-w-full mx-auto px-4">
+                        <h1 class="text-4xl sm:text-3xl md:text-5xl font-bold mb-6 text-center">Meow Yourself</h1>
+                        <p class="text-lg sm:text-lg text-gray-600 mb-8 text-center max-w-2xl sm:max-w-full">
+                            探索專屬於你的貓咪形象，了解你獨特的個性特質與健康狀態的趣味表達方式
+                        </p>
+                        <div class="cat-carousel w-full mb-10" data-carousel="home">
+                            <div class="carousel-track">
+                                <div class="carousel-slide active" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/A1.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/A1.png') }}" alt="暖心貓（布偶貓）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/A2.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/A2.png') }}" alt="晴天貓（橘貓）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/A3.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/A3.png') }}" alt="活力貓（俄羅斯藍貓）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/B1.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/B1.png') }}" alt="恬靜貓（波斯貓）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/B2.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/B2.png') }}" alt="日常貓（三花貓）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/B3.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/B3.png') }}" alt="外強內柔貓（英短銀漸層）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/C1.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/C1.png') }}" alt="暖伴貓（摺耳貓）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/C2.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/C2.png') }}" alt="深思貓（黑貓）" />
+                                </div>
+                                <div class="carousel-slide" style="--slide-bg: url('{{ url_for('static', filename='cat_cards/images/cats/C3.png') }}');">
+                                    <img src="{{ url_for('static', filename='cat_cards/images/cats/C3.png') }}" alt="靜心貓（暹羅貓）" />
+                                </div>
+                            </div>
+                            <div class="carousel-dots" role="tablist" aria-label="九宮格貓咪輪播">
+                                <button type="button" class="carousel-dot active" aria-label="暖心貓（布偶貓）" aria-current="true"></button>
+                                <button type="button" class="carousel-dot" aria-label="晴天貓（橘貓）"></button>
+                                <button type="button" class="carousel-dot" aria-label="活力貓（俄羅斯藍貓）"></button>
+                                <button type="button" class="carousel-dot" aria-label="恬靜貓（波斯貓）"></button>
+                                <button type="button" class="carousel-dot" aria-label="日常貓（三花貓）"></button>
+                                <button type="button" class="carousel-dot" aria-label="外強內柔貓（英短銀漸層）"></button>
+                                <button type="button" class="carousel-dot" aria-label="暖伴貓（摺耳貓）"></button>
+                                <button type="button" class="carousel-dot" aria-label="深思貓（黑貓）"></button>
+                                <button type="button" class="carousel-dot" aria-label="靜心貓（暹羅貓）"></button>
+                            </div>
+                        </div>
+                        <!-- 🟢 修改開始：首頁免責聲明 -->
+                        <div class="w-full">
+                            <div class="bg-amber-100 warm-outline text-amber-900 rounded-xl px-6 py-4 text-sm text-center leading-relaxed">
+                                <strong>【特別提醒】</strong> 本測驗僅為娛樂與參考，並非醫療建議。若有任何身心困擾，請尋求專業協助。
+                            </div>
+                        </div>
+                        <!-- 🟢 修改結束 -->
+                        <div class="w-full mt-6">
+                            <div class="warm-note warm-border text-gray-800 rounded-xl px-6 py-4 text-sm text-center leading-relaxed">
+                                <strong>為確保最佳瀏覽體驗</strong>，請使用 Google Chrome 或 Safari 瀏覽器開啟本網站。<br />
+                                ⚠️ 請避免透過 LINE Messenger 內建瀏覽器開啟，以免因安全限制導致下載或連結被阻擋。
+                            </div>
+                        </div>
+                        <div class="w-full max-w-md sm:max-w-full cta-offset">
+                            <a href="{{ url_for('upload_health') }}" class="primary-cta w-full py-4 px-6 warm-cta rounded-lg text-lg font-medium transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
+                                <span class="material-symbols-outlined mr-2">pets</span> 開啟你的專屬旅程
+                            </a>
+                        </div>
+                    </div>
+                    <div class="mobile-only mobile-cat-section px-4">
+                        <div class="mobile-cat-card">
+                            <h2>我們的九宮格貓咪</h2>
+                            <p>九大貓咪人格一次看懂，看看哪一隻最貼近你的靈魂貓夥伴。</p>
+                            <div class="mobile-cat-grid">
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/A1.png') }}" alt="暖心貓（布偶貓）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/A2.png') }}" alt="晴天貓（橘貓）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/A3.png') }}" alt="活力貓（俄羅斯藍貓）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/B1.png') }}" alt="恬靜貓（波斯貓）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/B2.png') }}" alt="日常貓（三花貓）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/B3.png') }}" alt="外強內柔貓（英短銀漸層）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/C1.png') }}" alt="暖伴貓（摺耳貓）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/C2.png') }}" alt="深思貓（黑貓）" />
+                                <img src="{{ url_for('static', filename='cat_cards/images/cats/C3.png') }}" alt="靜心貓（暹羅貓）" />
+                            </div>
+                            <a href="{{ url_for('featured_cats') }}" class="mobile-explore-btn">
+                                <span class="material-symbols-outlined">grid_view</span> 前往探索
+                            </a>
+                        </div>
+                    </div>
+                    <div class="mt-20 max-w-5xl lg:max-w-4xl sm:max-w-full mx-auto">
+                        <h2 class="text-2xl font-medium mb-8 text-center">如何運作</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-4">
+                            <div class="warm-surface p-6 sm:p-4 rounded-lg shadow-sm hover:shadow transition-all duration-300 flex flex-col items-center text-center">
+                                <div class="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                                    <span class="material-symbols-outlined text-gray-700 text-2xl">upload_file</span>
+                                </div>
+                                <h3 class="font-medium text-lg mb-2">上傳健康檢查報告</h3>
+                                <p class="text-gray-600">安全上傳您的健康檢查報告，我們將分析關鍵數據</p>
+                            </div>
+                            <div class="warm-surface p-6 sm:p-4 rounded-lg shadow-sm hover:shadow transition-all duration-300 flex flex-col items-center text-center">
+                                <div class="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                                    <span class="material-symbols-outlined text-gray-700 text-2xl">psychology</span>
+                                </div>
+                                <h3 class="font-medium text-lg mb-2">完成心理測驗</h3>
+                                <p class="text-gray-600">回答簡短的心理測驗，幫助我們了解你的性格特質</p>
+                            </div>
+                            <div class="warm-surface p-6 sm:p-4 rounded-lg shadow-sm hover:shadow transition-all duration-300 flex flex-col items-center text-center">
+                                <div class="h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                                    <span class="material-symbols-outlined text-gray-700 text-2xl">pets</span>
+                                </div>
+                                <h3 class="font-medium text-lg mb-2">獲得專屬貓咪圖卡</h3>
+                                <p class="text-gray-600">獲取獨一無二的專屬貓咪圖卡，展現你的健康與個性</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-20 max-w-3xl lg:max-w-3xl sm:max-w-full mx-auto">
+                        <h2 class="text-2xl font-medium mb-4 text-center">常見問題</h2>
+                        <div class="space-y-3 mt-6">
+                            <details class="warm-surface rounded-lg overflow-hidden hover:shadow transition-all duration-300">
+                                <summary class="p-4 sm:p-2 cursor-pointer font-medium flex items-center justify-between">
+                                    我的健康資料安全嗎？
+                                    <span class="material-symbols-outlined transition-transform">expand_more</span>
+                                </summary>
+                                <div class="p-4 sm:p-2 pt-0 text-gray-600">
+                                    所有資料僅用於生成您的專屬貓咪圖卡，不會儲存或分享給第三方。
+                                </div>
+                            </details>
+                            <details class="warm-surface rounded-lg overflow-hidden hover:shadow transition-all duration-300">
+                                <summary class="p-4 sm:p-2 cursor-pointer font-medium flex items-center justify-between">
+                                    心理測驗需要花多少時間？
+                                    <span class="material-symbols-outlined transition-transform">expand_more</span>
+                                </summary>
+                                <div class="p-4 sm:p-2 pt-0 text-gray-600">
+                                    我們的心理測驗簡短有趣，通常只需5-10分鐘即可完成。測驗結果將幫助我們創建更符合您個性的貓咪圖卡。
+                                </div>
+                            </details>
+                            <details class="warm-surface rounded-lg overflow-hidden hover:shadow transition-all duration-300">
+                                <summary class="p-4 sm:p-2 cursor-pointer font-medium flex items-center justify-between text-gray-800">
+                                    可以更改我的貓咪圖卡嗎？
+                                    <span class="material-symbols-outlined transition-transform">expand_more</span>
+                                </summary>
+                                <div class="p-4 sm:p-2 pt-0 text-gray-600">
+                                    當然可以！您可以隨時更新健康資料或重新進行心理測驗，系統將生成新的貓咪圖卡。您還可以保存多個不同版本的圖卡。
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                </main>
+                <footer class="mt-20 bg-[#E8D6C5] py-10 px-6 text-center text-gray-700">
+                    <h2 class="text-2xl font-bold mb-2">與我們聯繫</h2>
+                    <p class="text-base mb-4">如果您有任何問題或建議，請隨時透過以下方式聯絡我們。</p>
+                    <div class="flex flex-col items-center gap-2 text-base">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined">mail</span>
+                            <span>meowyourself2025@gmail.com</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-6">© 2025 Meow Yourself. All rights reserved.</p>
+                </footer>
+            </div>
+        </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const carousel = document.querySelector('[data-carousel="home"]');
+                if (!carousel) {
+                    return;
+                }
+
+                const slides = carousel.querySelectorAll('.carousel-slide');
+                const dots = carousel.querySelectorAll('.carousel-dot');
+
+                if (slides.length <= 1) {
+                    return;
+                }
+
+                let current = 0;
+                let timerId = null;
+
+                const setActiveState = (index) => {
+                    slides.forEach((slide, idx) => {
+                        slide.classList.toggle('active', idx === index);
+                    });
+                    dots.forEach((dot, idx) => {
+                        const isActive = idx === index;
+                        dot.classList.toggle('active', isActive);
+                        dot.setAttribute('aria-current', isActive ? 'true' : 'false');
+                    });
+                    current = index;
+                };
+
+                const showNext = () => {
+                    const nextIndex = (current + 1) % slides.length;
+                    setActiveState(nextIndex);
+                };
+
+                const stopTimer = () => {
+                    if (timerId) {
+                        clearInterval(timerId);
+                        timerId = null;
+                    }
+                };
+
+                const startTimer = () => {
+                    stopTimer();
+                    timerId = setInterval(showNext, 2000);
+                };
+
+                dots.forEach((dot, idx) => {
+                    dot.addEventListener('click', () => {
+                        setActiveState(idx);
+                        startTimer();
+                    });
+                });
+
+                carousel.addEventListener('mouseenter', stopTimer);
+                carousel.addEventListener('mouseleave', startTimer);
+
+                setActiveState(0);
+                startTimer();
+            });
+        </script>
+    </body>
+</html>
