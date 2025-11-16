@@ -1164,41 +1164,25 @@ def upload_health():
             flash("僅支援 JPEG、PNG 或 PDF 檔案！", "error")
             return redirect(request.url)
 
-        # 上傳檔案到 Firebase Storage
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{file.filename}"
-        blob_path = f"health_reports/{user_id}/{filename}"
-        logging.debug(f"Uploading file: {file.filename}")
-        logging.debug(f"Uploading to Storage: {blob_path}")
-
-        blob = bucket.blob(blob_path)
-        blob.upload_from_file(file, content_type=file.mimetype)
-        # blob.make_public()
-        file_url = blob.public_url
-        logging.debug(f"File uploaded successfully to Storage: {file_url}")
-
-        # 分析健康報告
+        # 11/12???????????????????
         logging.debug("Starting health report analysis...")
         recognized_metric_count = 0
         try:
-            file.seek(0)  # 重置檔案指針
+            file.seek(0)  # ??????
+            # 11/12??????????????????????
             file_data = file.read()
             file_type = "image" if is_image else "pdf"
             analysis_data, health_score, health_warnings, recognized_metric_count = analyze_health_report(
-                file_data, user_id, file_type, gender=user_gender  # 🟢 修改：將生理性別傳遞至分析模組
+                file_data, user_id, file_type, gender=user_gender  # ?? ?????????????
             )
             logging.debug(
                 f"Analysis result - data: {analysis_data is not None}, score: {health_score}, warnings: {len(health_warnings)}, matched_metrics: {recognized_metric_count}"
             )
-            # GALING 避免傳非健檢報告 10/5
+            # GALING ?????? 10/5
             if recognized_metric_count <= 0 or not analysis_data:
                 logging.warning("No recognizable health metrics were extracted; prompting re-upload")
-                try:
-                    blob.delete()
-                except Exception as cleanup_error:
-                    logging.warning(f"Failed to delete invalid upload: {cleanup_error}")
                 session['invalid_report_prompt'] = True
-                flash("Sorry喵，系統未讀取到健檢報告相關數據", "invalid_report")
+                flash("Sorry??????????????", "invalid_report")
                 return redirect(url_for('upload_health'))
         except Exception as analysis_e:
             logging.error(f"Health report analysis failed: {str(analysis_e)}")
@@ -1206,11 +1190,10 @@ def upload_health():
             analysis_data, health_score, health_warnings, recognized_metric_count = None, 0, [], 0
 
         # 準備 Firestore 文檔
+        # 11/12?????????Firestore ???????
         health_report_doc = {
             "user_uid": user_id,
             "report_date": datetime.now().strftime("%Y/%m/%d"),
-            "filename": file.filename,
-            "url": file_url,
             "file_type": file_type,
             "created_at": SERVER_TIMESTAMP,
         }
