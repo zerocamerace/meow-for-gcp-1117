@@ -180,6 +180,38 @@ def _authenticate_with_password(email: str, password: str) -> str:
     return firebase_uid
 
 
+# ?????????
+def _delete_user_health_reports(user_id: str):
+    try:
+        reports = (
+            db.collection("health_reports").where("user_uid", "==", user_id).stream()
+        )
+        for doc in reports:
+            doc.reference.delete()
+    except Exception as exc:
+        logging.warning("Failed to delete health reports for %s: %s", user_id, exc)
+
+
+def _delete_user_psychology_tests(user_id: str):
+    try:
+        tests = (
+            db.collection("users").document(user_id).collection("psychology_tests").stream()
+        )
+        for doc in tests:
+            doc.reference.delete()
+    except Exception as exc:
+        logging.warning("Failed to delete psychology tests for %s: %s", user_id, exc)
+
+
+def _delete_user_storage_files(user_id: str):
+    try:
+        prefix = f"health_reports/{user_id}/"
+        for blob in bucket.list_blobs(prefix=prefix):
+            blob.delete()
+    except Exception as exc:
+        logging.warning("Failed to delete storage objects for %s: %s", user_id, exc)
+
+
 # ?? 0929修改：共用工具
 def _safe_url(url: str | None) -> str | None:
     if not url:
@@ -1220,6 +1252,88 @@ def login():
             return render_template("login.html", is_logged_in=is_logged_in)
 
     return render_template("login.html", is_logged_in=is_logged_in)
+
+
+@app.route("/delete_account", methods=["GET", "POST"])
+def delete_account():
+    if "user_id" not in session:
+        flash("請先登入。", "error")
+        return redirect(url_for("login"))
+
+    user_id = session["user_id"]
+    try:
+        user_doc = db.collection("users").document(user_id).get()
+        user_data = user_doc.to_dict() if user_doc.exists else {}
+    except Exception as exc:
+        logging.error("Failed to load user document for deletion: %s", exc)
+        user_data = {}
+
+    user_email = user_data.get("email") or ""
+
+    if request.method == "POST":
+        password = (request.form.get("password") or "").strip()
+        confirm_delete = request.form.get("confirm_delete") == "yes"
+
+        if not password:
+            flash("請輸入密碼以確認刪除帳號。", "error")
+            return render_template(
+                "delete_account.html",
+                user_email=user_email,
+                is_logged_in=True,
+            )
+        if not confirm_delete:
+            flash("請勾選確認刪除，刪除後無法復原。", "error")
+            return render_template(
+                "delete_account.html",
+                user_email=user_email,
+                is_logged_in=True,
+            )
+        if not user_email:
+            flash("無法確認此帳號的電子郵件，請聯絡客服。", "error")
+            return render_template(
+                "delete_account.html",
+                user_email=user_email,
+                is_logged_in=True,
+            )
+
+        try:
+            _authenticate_with_password(user_email, password)
+        except ValueError as auth_error:
+            flash(_localized_login_error(str(auth_error), user_email), "error")
+            return render_template(
+                "delete_account.html",
+                user_email=user_email,
+                is_logged_in=True,
+            )
+        except RuntimeError as runtime_error:
+            flash(_localized_login_error(str(runtime_error), user_email), "error")
+            return render_template(
+                "delete_account.html",
+                user_email=user_email,
+                is_logged_in=True,
+            )
+
+        _delete_user_psychology_tests(user_id)
+        _delete_user_health_reports(user_id)
+        _delete_user_storage_files(user_id)
+
+        try:
+            db.collection("users").document(user_id).delete()
+        except Exception as exc:
+            logging.warning("Failed to delete user document %s: %s", user_id, exc)
+
+        try:
+            auth.delete_user(user_id)
+        except FirebaseError as exc:
+            logging.warning("Failed to delete auth user %s: %s", user_id, exc)
+
+        session.clear()
+        flash("帳戶已刪除。", "success")
+        return redirect(url_for("home"))
+
+    return render_template(
+        "delete_account.html", user_email=user_email, is_logged_in=True
+    )
 
 
 # 登出

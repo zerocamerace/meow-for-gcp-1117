@@ -507,7 +507,12 @@
                                 <img src="https://images.unsplash.com/photo-1511367461989-f85a21fda167?crop=entropy&cs=tinysrgb&fit=max&fm=jpg" class="h-8 w-8 rounded-full border border-gray-200 hover:border-gray-400 transition-all duration-200" alt="Profile" />
                             </summary>
                             <div id="profile-menu" class="absolute right-0 mt-2 w-40 rounded shadow-sm py-1 z-10 border border-gray-100 warm-surface warm-menu">
+                                {% if is_logged_in %}
+                                <a href="{{ url_for('delete_account') }}" class="block px-4 py-2 text-sm transition-colors duration-200 warm-menu-link text-red-600">刪除帳號</a>
                                 <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm transition-colors duration-200 warm-menu-link">登出</a>
+                                {% else %}
+                                <a href="{{ url_for('login') }}" class="block px-4 py-2 text-sm transition-colors duration-200 warm-menu-link">登入</a>
+                                {% endif %}
                             </div>
                         </details>
                     </div>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>刪除帳號 - Meow Yourself</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+                background: linear-gradient(160deg, #f8ebe2, #f2d4c5);
+                min-height: 100vh;
+                color: #4b2f24;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 24px;
+            }
+            .card {
+                background: #fffaf6;
+                border-radius: 24px;
+                padding: 32px;
+                box-shadow: 0 20px 40px rgba(90, 60, 45, 0.15);
+            }
+            h1 {
+                font-size: 28px;
+                margin-bottom: 8px;
+                text-align: center;
+            }
+            p.description {
+                text-align: center;
+                color: #7c5b4a;
+                margin-bottom: 24px;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            label {
+                font-weight: 600;
+                color: #4b2f24;
+            }
+            input[type="password"] {
+                width: 100%;
+                padding: 12px;
+                border-radius: 12px;
+                border: 1px solid #e0cfc4;
+                background: #fff;
+                font-size: 16px;
+            }
+            .confirm-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 14px;
+                color: #7c5b4a;
+            }
+            .actions {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                margin-top: 16px;
+            }
+            .btn {
+                flex: 1;
+                padding: 12px;
+                border-radius: 9999px;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            .btn-danger {
+                background: #f87171;
+                color: white;
+            }
+            .btn-secondary {
+                background: #e5e7eb;
+                color: #374151;
+                text-decoration: none;
+                text-align: center;
+            }
+            .flash {
+                padding: 10px 16px;
+                border-radius: 12px;
+                margin-bottom: 12px;
+                background: #fee2e2;
+                color: #b91c1c;
+                text-align: center;
+            }
+            .flash.success {
+                background: #dcfce7;
+                color: #15803d;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="card">
+                <h1>刪除帳號</h1>
+                <p class="description">帳號刪除後，所有資料（健康報告、心理測驗等）都會永久移除，且無法復原。</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="flash {% if category == 'success' %}success{% endif %}">{{ message }}</div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="{{ url_for('delete_account') }}">
+                    <div>
+                        <label>電子郵件</label>
+                        <p>{{ user_email or '（未知）' }}</p>
+                    </div>
+                    <div>
+                        <label for="password">請輸入密碼以確認刪除</label>
+                        <input type="password" id="password" name="password" required />
+                    </div>
+                    <label class="confirm-row">
+                        <input type="checkbox" name="confirm_delete" value="yes" required />
+                        我了解帳號刪除後無法復原，並願意刪除所有資料。
+                    </label>
+                    <div class="actions">
+                        <button type="submit" class="btn btn-danger">刪除帳號</button>
+                        <a href="{{ url_for('home') }}" class="btn btn-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </body>
+</html>
