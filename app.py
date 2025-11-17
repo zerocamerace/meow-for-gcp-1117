@@ -1,4 +1,4 @@
-from flask import (
+﻿from flask import (
     Flask,
     render_template,
     request,
@@ -17,14 +17,14 @@ import os
 from datetime import datetime
 import logging
 import time
-import requests  # 🟡 0929修改：呼叫外部貓圖來源
-import random  # 🟡 0929修改：貓咪圖卡風格隨機與備援使用
-import textwrap  # 🟡 0929修改：圖卡文字換行處理
-import hashlib  # 🟡 0929修改：圖卡輸出避免檔名衝突
-import imghdr  # 🟡 0929修改：驗證下載圖片格式
-from pathlib import Path  # 🟡 0929修改：設定圖卡輸出路徑
-from io import BytesIO  # 🟡 0929修改：處理圖片位元組資料
-from urllib.parse import urlparse  # 🟡 0929修改：驗證圖片網址安全性
+import requests  # ?? 0929修改：呼叫外部貓圖來源
+import random  # ?? 0929修改：貓咪圖卡風格隨機與備援使用
+import textwrap  # ?? 0929修改：圖卡文字換行處理
+import hashlib  # ?? 0929修改：圖卡輸出避免檔名衝突
+import imghdr  # ?? 0929修改：驗證下載圖片格式
+from pathlib import Path  # ?? 0929修改：設定圖卡輸出路徑
+from io import BytesIO  # ?? 0929修改：處理圖片位元組資料
+from urllib.parse import urlparse  # ?? 0929修改：驗證圖片網址安全性
 
 from PIL import (
     Image,
@@ -32,7 +32,7 @@ from PIL import (
     ImageFont,
     ImageOps,
     ImageFilter,
-)  # 🟡 0929修改：繪製圖卡
+)  # ?? 0929修改：繪製圖卡
 from health_report_module import analyze_health_report
 from google.cloud.firestore import SERVER_TIMESTAMP
 from google import genai
@@ -57,7 +57,7 @@ def extract_json_from_response(text: str) -> dict:
         raise ValueError(f"No JSON object found in: {raw[:200]}")
 
     candidate = match.group(0)
-    candidate = candidate.replace("＂", '"').replace("＇", "'").replace("\ufeff", "")
+    candidate = candidate.replace("”", '"').replace("’", "'").replace("\ufeff", "")
 
     return json.loads(candidate)
 
@@ -141,7 +141,46 @@ def _generate_with_retry(contents, generation_config=None):
     raise RuntimeError("Gemini API returned empty response for all candidate models")
 
 
-# 🟡 0929修改：共用工具
+FIREBASE_AUTH_ENDPOINT = (
+    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
+)
+
+
+def _authenticate_with_password(email: str, password: str) -> str:
+    """Use Firebase REST API to verify email/password login."""
+    if not FIREBASE_WEB_API_KEY:
+        logging.error("FIREBASE_WEB_API_KEY is not configured")
+        raise RuntimeError("AUTH_SERVICE_NOT_CONFIGURED")
+
+    payload = {
+        "email": email,
+        "password": password,
+        "returnSecureToken": True,
+    }
+    try:
+        resp = requests.post(
+            f"{FIREBASE_AUTH_ENDPOINT}?key={FIREBASE_WEB_API_KEY}",
+            json=payload,
+            timeout=10,
+        )
+        data = resp.json()
+    except requests.RequestException as exc:
+        logging.error("Firebase password auth network error: %s", exc)
+        raise RuntimeError("AUTH_NETWORK_ERROR") from exc
+
+    if resp.status_code != 200:
+        error_code = ((data.get("error") or {}).get("message") or "UNKNOWN_ERROR").upper()
+        logging.warning("Firebase password auth failed: %s", error_code)
+        raise ValueError(error_code)
+
+    firebase_uid = data.get("localId")
+    if not firebase_uid:
+        logging.error("Firebase auth response missing localId: %s", data)
+        raise RuntimeError("AUTH_RESPONSE_INVALID")
+    return firebase_uid
+
+
+# ?? 0929修改：共用工具
 def _safe_url(url: str | None) -> str | None:
     if not url:
         return None
@@ -204,7 +243,7 @@ def _to_datetime(value):
     return datetime.min
 
 
-def _cleanup_old_cards(max_files: int = 40):  # 🟡 0929修改：限制圖卡輸出數量
+def _cleanup_old_cards(max_files: int = 40):  # ?? 0929修改：限制圖卡輸出數量
     try:
         files = sorted(
             CAT_CARD_DIR.glob("catcard_*.png"),
@@ -218,7 +257,7 @@ def _cleanup_old_cards(max_files: int = 40):  # 🟡 0929修改：限制圖卡�
 
 
 def _normalize_health_data(report: dict):
-    """Collect warnings與重要指標，確保與舊版呈現一致。"""  # 🟡 0929修改：整理健檢資料給前端顯示
+    """Collect warnings與重要指標，確保與舊版呈現一致。"""  # ?? 0929修改：整理健檢資料給前端顯示
     warnings = []
     for key in ("health_warnings", "warnings", "alert_list", "warning_details"):
         value = report.get(key)
@@ -340,7 +379,7 @@ def _build_health_tips(report: dict, warnings: list[str], limit: int = 3):
     return tips
 
 
-# 🟡 0929修改：九宮格貓咪分區
+# ?? 0929修改：九宮格貓咪分區
 def _score_to_interval(score) -> int | None:
     """將數值分數換成 1~3 區間。"""
     if score is None:
@@ -359,7 +398,7 @@ def _score_to_interval(score) -> int | None:
 
 
 def _resolve_persona_key(health_score, mind_score) -> str | None:
-    """根據身心分數挑選對應的既有貓咪圖。"""  # 🟡 0929修改：依分數選擇貓咪類型
+    """根據身心分數挑選對應的既有貓咪圖。"""  # ?? 0929修改：依分數選擇貓咪類型
     physical_zone = _score_to_interval(health_score)
     mental_zone = _score_to_interval(mind_score)
     if not physical_zone or not mental_zone:
@@ -371,7 +410,7 @@ def _resolve_persona_key(health_score, mind_score) -> str | None:
 
 
 def _validate_report_schema(payload: dict) -> dict:
-    """驗證 Gemini 報告 JSON 結構，避免後續操作失敗。"""  # 🟡 0929修改05：補上遺失的 schema 檢查 helper
+    """驗證 Gemini 報告 JSON 結構，避免後續操作失敗。"""  # ?? 0929修改05：補上遺失的 schema 檢查 helper
     if not isinstance(payload, dict):
         raise TypeError("payload must be dict")
 
@@ -404,7 +443,7 @@ def _validate_report_schema(payload: dict) -> dict:
 def fetch_cat_image(
     max_retries: int = 3, timeout: int = 12, max_bytes: int = 8_000_000
 ):
-    """從 TheCatAPI 取得貓圖，失敗時改用備援圖庫。"""  # 🟡 0929修改：新增貓圖來源
+    """從 TheCatAPI 取得貓圖，失敗時改用備援圖庫。"""  # ?? 0929修改：新增貓圖來源
     api_url = "https://api.thecatapi.com/v1/images/search?size=med&mime_types=jpg,png"
     headers = {}
     api_key = os.getenv("CAT_API_KEY")
@@ -489,7 +528,7 @@ def _download_image(
 
 
 def generate_cat_card_text(report: dict, psychology: dict, preferred_style: str):
-    """呼叫 Gemini 產生貓卡敘述與生活推薦。"""  # 🟡 1007 修改『圖卡生成推薦』：擴充文案欄位
+    """呼叫 Gemini 產生貓卡敘述與生活推薦。"""  # ?? 1007 修改『圖卡生成推薦』：擴充文案欄位
     prompt = (
         "你是一位數位貓咪圖卡策展師，會依據使用者的健康與心理測驗資料提供陪伴資訊。\n"
         "請回傳 JSON，必須包含下列欄位：\n"
@@ -556,7 +595,7 @@ CAT_STYLES = {
             "movie": ("《翻滾吧！阿信》", "熱血卻富含體貼的勵志故事，帶來向上的動力"),
             "music": ("City Pop 暖陽歌單", "輕快律動喚醒身體的節奏感"),
             "activity": ("戶外晨間伸展", "在陽光下活動筋骨，吸收自然能量"),
-        },     # 🟡 1007 修改『圖卡生成推薦』
+        },     # ?? 1007 修改『圖卡生成推薦』
     },
     "steady": {
         "title": "溫柔照護隊長",
@@ -592,7 +631,7 @@ CAT_STYLES = {
     },
 }
 
-# 🟡 1007 修改『圖卡生成推薦』：預設影音與活動建議
+# ?? 1007 修改『圖卡生成推薦』：預設影音與活動建議
 def _fallback_recommendations(style_key: str) -> list[dict[str, str]]:
     style = CAT_STYLES.get(style_key, {})
     curations = style.get("curations", {})
@@ -612,7 +651,7 @@ def _fallback_recommendations(style_key: str) -> list[dict[str, str]]:
         recommendations.append({"label": label, "title": title, "reason": reason})
     return recommendations
 
-# 🟡 1007 修改『圖卡生成推薦』：整合 AI 與預設推薦
+# ?? 1007 修改『圖卡生成推薦』：整合 AI 與預設推薦
 def _normalize_recommendations(ai_payload: dict | None, style_key: str) -> list[dict[str, str]]:
     payload = ai_payload or {}
     raw_recs = payload.get("recommendations") or {}
@@ -638,12 +677,12 @@ def _normalize_recommendations(ai_payload: dict | None, style_key: str) -> list[
         normalized.append({"label": label, "title": title, "reason": reason})
     if len(normalized) > 2:
         random.shuffle(normalized)
-        normalized = normalized[:2]  # 🟡 1007 修改圖卡：僅呈現兩則建議
+        normalized = normalized[:2]  # ?? 1007 修改圖卡：僅呈現兩則建議
     return normalized
 
 
 def build_cat_card(report: dict, psychology: dict):
-    """根據健康與心理測驗資料建立貓卡內容。"""  # 🟡 0929修改：組裝貓卡資料
+    """根據健康與心理測驗資料建立貓卡內容。"""  # ?? 0929修改：組裝貓卡資料
     health_score = report.get("health_score")
     mood_score = (
         psychology.get("combined_score")
@@ -671,8 +710,8 @@ def build_cat_card(report: dict, psychology: dict):
     style = CAT_STYLES[style_key]
 
     # Finalize fields with AI payload or defaults
-    # 🟡 0929修改：先試圖抓對應圖檔，失敗再退回 TheCatAPI
-    # 🟡 1007 修改『圖卡生成推薦』
+    # ?? 0929修改：先試圖抓對應圖檔，失敗再退回 TheCatAPI
+    # ?? 1007 修改『圖卡生成推薦』
     name = (ai_payload or {}).get("name") or random.choice(style["names"])
     persona_key = _resolve_persona_key(health_value, mood_value)
     persona_label = CAT_PERSONA_METADATA.get(persona_key)
@@ -716,7 +755,7 @@ def build_cat_card(report: dict, psychology: dict):
             {"label": "陪伴力", "value": f"{companionship}%"},
             {"label": "穩定度", "value": f"{stability}%"},
         ],  # 前端不再顯示分數，但保留結構以利後續調整
-        "recommendations": _normalize_recommendations(ai_payload, style_key),  # 🟡 1007 修改『圖卡生成推薦』：加入影音與活動建議
+        "recommendations": _normalize_recommendations(ai_payload, style_key),  # ?? 1007 修改『圖卡生成推薦』：加入影音與活動建議
         "style_key": style_key,
         "palette": style.get("palette"),
         "keywords_list": model_keywords,
@@ -746,11 +785,11 @@ def circle_crop_image(image_bytes, diameter: int = 260) -> Image.Image:
     output.paste(img, (0, 0), mask)
     return output
 
-    # 🟡 0929修改：繪製圖卡(先試圖抓對應圖檔，失敗再退回 TheCatAPI)
+    # ?? 0929修改：繪製圖卡(先試圖抓對應圖檔，失敗再退回 TheCatAPI)
 
 
 def render_cat_card_image(card: dict, user_id: str, cache_key: str | None = None):
-    """生成圖卡 PNG，並回傳檔名與來源 URL。"""  # 🟡 0929修改：圖卡繪製
+    """生成圖卡 PNG，並回傳檔名與來源 URL。"""  # ?? 0929修改：圖卡繪製
     timeout = 12
     max_bytes = 8_000_000
     image_bytes = None
@@ -892,8 +931,9 @@ app.secret_key = os.getenv(
     "FLASK_SECRET_KEY", "your-secret-key"
 )  # 從 .env 載入或使用預設值
 logging.basicConfig(level=logging.DEBUG)
+FIREBASE_WEB_API_KEY = os.getenv('FIREBASE_WEB_API_KEY')
 
-# 🟡 0929修改：設定圖卡輸出位置與備援資料
+# ?? 0929修改：設定圖卡輸出位置與備援資料
 BASE_DIR = Path(__file__).resolve().parent
 CAT_CARD_DIR = BASE_DIR / "static" / "cat_cards"
 CAT_CARD_DIR.mkdir(parents=True, exist_ok=True)
@@ -912,7 +952,7 @@ JSON_RESPONSE_CONFIG = genai_types.GenerateContentConfig(
     temperature=0.6,
 )
 
-# 🟡 0929修改：貓咪九宮格對應既有圖庫
+# ?? 0929修改：貓咪九宮格對應既有圖庫
 _CAT_LOCAL_IMAGE_DIR = CAT_CARD_DIR / "images" / "cats"
 _CAT_LOCAL_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -925,15 +965,15 @@ CAT_PERSONA_IMAGES = {
 }
 
 CAT_PERSONA_METADATA = {
-    "A1": "布偶貓｜心理樂觀・身體指標待加油",
-    "A2": "橘貓｜情緒穩定・生活節奏良好",
-    "A3": "俄羅斯藍貓｜活力均衡・能量充沛",
-    "B1": "波斯貓｜身心提醒・適度調養",
-    "B2": "三花貓｜日常波動・持續照顧",
-    "B3": "銀漸層貓｜外強內柔・記得舒壓",
-    "C1": "折耳貓｜雙重負擔・先好好休息",
-    "C2": "黑貓｜心理調適中・需要陪伴",
-    "C3": "暹羅貓｜內在壓力大・身體仍有力",
+    "A1": "布偶貓｜心理樂觀?身體指標待加油",
+    "A2": "橘貓｜情緒穩定?生活節奏良好",
+    "A3": "俄羅斯藍貓｜活力均衡?能量充沛",
+    "B1": "波斯貓｜身心提醒?適度調養",
+    "B2": "三花貓｜日常波動?持續照顧",
+    "B3": "銀漸層貓｜外強內柔?記得舒壓",
+    "C1": "折耳貓｜雙重負擔?先好好休息",
+    "C2": "黑貓｜心理調適中?需要陪伴",
+    "C3": "暹羅貓｜內在壓力大?身體仍有力",
 }
 
 FONT_CANDIDATES = [
@@ -996,7 +1036,7 @@ except Exception as e:
     logging.error(f"Failed to initialise google-genai client: {e}")
     raise
 
-# 🟢 修改：啟動時列印路由表（Flask 3 不支援 before_first_request，故保留註解）
+# ?? 修改：啟動時列印路由表（Flask 3 不支援 before_first_request，故保留註解）
 # @app.before_first_request
 # def _print_url_map():
 #    logging.debug("URL Map:\n" + "\n".join([str(r) for r in app.url_map.iter_rules()]))
@@ -1050,7 +1090,7 @@ def register():
         logging.debug(f"Received POST request with form data: {request.form}")
         email = request.form.get("email")
         password = request.form.get("password")
-        # 🟢 修改開始：新增生理性別欄位
+        # ?? 修改開始：新增生理性別欄位
         gender = request.form.get("gender")
         logging.debug(
             f"Parsed form data: email={email}, password={'*' * len(password) if password else None}, gender={gender}"
@@ -1064,16 +1104,16 @@ def register():
                 error="請輸入電子郵件、密碼和生理性別",
                 is_logged_in=is_logged_in,
             )
-        # 🟢 修改結束
+        # ?? 修改結束
         try:
             user = auth.create_user(email=email, password=password)
             logging.debug(f"User created: uid={user.uid}, email={email}")
             db.collection("users").document(user.uid).set(
                 {
                     "email": email,
-                    # 🟢 修改開始：Firestore 儲存生理性別
+                    # ?? 修改開始：Firestore 儲存生理性別
                     "gender": gender,
-                    # 🟢 修改結束
+                    # ?? 修改結束
                     "created_at": SERVER_TIMESTAMP,
                     "last_login": None,
                 }
@@ -1109,17 +1149,28 @@ def login():
     is_logged_in = "user_id" in session
 
     def _localized_login_error(message: str, email: str) -> str:
-        """Convert Firebase login error messages to user-friendly Traditional Chinese."""
+        """Convert Firebase login error messages or codes to user-friendly Traditional Chinese."""
+        code = (message or "").upper()
         msg = (message or "").lower()
-        if "no user record" in msg:
-            return f"登入失敗：找不到此電子郵件帳號（{email}）。"
-        if "invalid password" in msg or "password is invalid" in msg:
-            return "登入失敗：密碼不正確，請再試一次。"
-        if "too many attempts" in msg:
-            return "登入失敗：嘗試次數過多，請稍後再試。"
-        if "user disabled" in msg:
-            return "登入失敗：此帳號已被停用，請聯絡管理員。"
-        return "登入失敗：系統目前忙碌，請稍後再試。"
+        if "EMAIL_NOT_FOUND" in code or "no user record" in msg:
+            return "帳號或密碼有誤，請重新輸入。"
+        if "INVALID_PASSWORD" in code or "password is invalid" in msg:
+            return "帳號或密碼有誤，請重新輸入。"
+        if "TOO_MANY_ATTEMPTS" in code or "too many attempts" in msg:
+            return "帳號或密碼有誤，請重新輸入。"
+        if "USER_DISABLED" in code or "user disabled" in msg:
+            return "帳號或密碼有誤，請重新輸入。"
+        if "AUTH_SERVICE_NOT_CONFIGURED" in code:
+            return "帳號或密碼有誤，請重新輸入。"
+        if "AUTH_NETWORK_ERROR" in code:
+            return "帳號或密碼有誤，請重新輸入。"
+        if "AUTH_RESPONSE_INVALID" in code:
+            return "帳號或密碼有誤，請重新輸入。"
+        return "帳號或密碼有誤，請重新輸入。"
+
+
+
+
 
     if request.method == "GET":
         session.pop("_flashes", None)
@@ -1138,18 +1189,30 @@ def login():
             return render_template("login.html", is_logged_in=is_logged_in)
 
         try:
-            user = auth.get_user_by_email(email)
-            db.collection("users").document(user.uid).update(
-                {"last_login": SERVER_TIMESTAMP}
-            )
-            logging.debug(f"User login updated in Firestore for uid: {user.uid}")
-            session["user_id"] = user.uid
-            flash("登入成功！", "success")
+            firebase_uid = _authenticate_with_password(email, password)
+            user_ref = db.collection("users").document(firebase_uid)
+            snapshot = user_ref.get()
+            if snapshot.exists:
+                user_ref.update({"last_login": SERVER_TIMESTAMP})
+            else:
+                user_ref.set({"email": email, "created_at": SERVER_TIMESTAMP, "last_login": SERVER_TIMESTAMP})
+            logging.debug(f"User login updated in Firestore for uid: {firebase_uid}")
+            session["user_id"] = firebase_uid
+            flash("?????", "success")
             return redirect(url_for("home"))
-        except FirebaseError as e:
-            error_message = str(e)
-            logging.error(f"Login failed: {error_message}")
-            flash(_localized_login_error(error_message, email), "error")
+        except ValueError as auth_error:
+            error_code = str(auth_error)
+            logging.warning(f"Login failed: {error_code}")
+            flash(_localized_login_error(error_code, email), "error")
+            return render_template("login.html", is_logged_in=is_logged_in)
+        except RuntimeError as auth_runtime:
+            err = str(auth_runtime)
+            logging.error(f"Password auth runtime error: {err}")
+            flash(_localized_login_error(err, email), "error")
+            return render_template("login.html", is_logged_in=is_logged_in)
+        except Exception as e:
+            logging.error(f"Unexpected login error: {str(e)}")
+            flash("??????????????????", "error")
             return render_template("login.html", is_logged_in=is_logged_in)
         except Exception as e:
             logging.error(f"Unexpected login error: {str(e)}")
@@ -1185,7 +1248,7 @@ def upload_health():
     user_id = session["user_id"]
     logging.debug(f"Current user_id from session: {user_id}")
 
-    # 🟢 修改開始：取得使用者生理性別
+    # ?? 修改開始：取得使用者生理性別
     user_gender = None
     try:
         user_doc = db.collection("users").document(user_id).get()
@@ -1204,9 +1267,9 @@ def upload_health():
         logging.error(f"Failed to retrieve user gender: {str(e)}")
         flash(f"取得使用者資料失敗：{str(e)}", "error")
         return redirect(url_for("login"))
-    # 🟢 修改結束
+    # ?? 修改結束
 
-    # 🟢 修改開始：已有健檢報告時自動導向心理測驗
+    # ?? 修改開始：已有健檢報告時自動導向心理測驗
     reupload_requested = request.args.get("reupload") == "1"
     try:
         existing_reports = list(
@@ -1227,7 +1290,7 @@ def upload_health():
         auto_redirect = False
     elif request.method == "GET" and has_existing_report and not reupload_requested:
         auto_redirect = True
-    # 🟢 修改結束
+    # ?? 修改結束
 
     if request.method == "POST":
         if "health_report" not in request.files:
@@ -1332,7 +1395,7 @@ def upload_health():
 # 心理測驗
 @app.route(
     "/psychology_test", methods=["GET", "POST"]
-)  # 🟢 修改：允許 POST 以處理心理測驗提交
+)  # ?? 修改：允許 POST 以處理心理測驗提交
 def psychology_test():
     if "user_id" not in session:
         flash("請先登入！", "error")
@@ -1340,10 +1403,10 @@ def psychology_test():
 
     user_id = session["user_id"]
     try:
-        # 🟢 修改：改為查詢頂層 health_reports 並依 user_uid 過濾，避免找不到文件
+        # ?? 修改：改為查詢頂層 health_reports 並依 user_uid 過濾，避免找不到文件
         health_reports = list(
             db.collection("health_reports").where("user_uid", "==", user_id).stream()
-        )  # 🟢 修改：原本是 users/{uid}/health_reports
+        )  # ?? 修改：原本是 users/{uid}/health_reports
         logging.debug(
             f"Psychology test check - existing reports: {len(health_reports)}"
         )
@@ -1355,7 +1418,7 @@ def psychology_test():
         flash(f"檢查健康報告失敗：{str(e)}", "error")
         return redirect(url_for("upload_health"))
 
-    # 🟢 修改開始：支援心理測驗表單提交流程
+    # ?? 修改開始：支援心理測驗表單提交流程
     if request.method == "GET":
         session.pop("_flashes", None)
 
@@ -1410,7 +1473,7 @@ def psychology_test():
         return render_template(
             "psychology_test.html", error=f"提交失敗：{str(e)}", is_logged_in=True
         )
-    # 🟢 修改結束
+    # ?? 修改結束
 
 
 # 聊天 API 端點（代理 Gemini API）
@@ -1582,10 +1645,10 @@ def report_api():
 
 
 # 儲存心理測驗分數
-# 🟢 修改：明確指定 endpoint 名稱，避免因函式名或載入順序造成的註冊差異
+# ?? 修改：明確指定 endpoint 名稱，避免因函式名或載入順序造成的註冊差異
 @app.route(
     "/save_psychology_scores", methods=["POST"], endpoint="save_psychology_scores"
-)  # 🟢 修改
+)  # ?? 修改
 def save_psychology_scores():
     if "user_id" not in session:
         return jsonify({"error": "未登入"}), 401
@@ -1638,7 +1701,7 @@ def generate_card():
 
     try:
         user_id = session["user_id"]
-        # 🟢 修改：同樣改為查詢頂層 health_reports
+        # ?? 修改：同樣改為查詢頂層 health_reports
         health_report_docs = (
             db.collection("health_reports").where("user_uid", "==", user_id).stream()
         )
@@ -1664,7 +1727,7 @@ def generate_card():
             data["id"] = doc.id
             tests.append(data)
         if not tests:
-            flash("請先完成心理測驗！", "error")  # 🟡 0929修改：修正提示字串
+            flash("請先完成心理測驗！", "error")  # ?? 0929修改：修正提示字串
             return redirect(url_for("psychology_test"))
 
         sorted_reports = sorted(
@@ -1674,7 +1737,7 @@ def generate_card():
         latest_report = sorted_reports[-1]
         warnings, vitals_display = _normalize_health_data(
             latest_report
-        )  # 🟡 0929修改：整理健檢提醒與指標
+        )  # ?? 0929修改：整理健檢提醒與指標
         latest_report["_display_warnings"] = warnings
         latest_report["_display_vitals"] = vitals_display
         health_tips = _build_health_tips(latest_report, warnings)
@@ -1709,7 +1772,7 @@ def generate_card():
             cache_age = time.time() - cache_entry.get("timestamp", 0)
             cache_key_match = (
                 cache_entry.get("cache_key") == cache_key_current
-            )  # 🟡 1001修改01：僅當最新報告/測驗與快取一致時才沿用
+            )  # ?? 1001修改01：僅當最新報告/測驗與快取一致時才沿用
             if cache_path.exists() and cache_age < 3600 and cache_key_match:
                 logging.debug("Using cached cat card for user %s", user_id)
                 card_payload = cache_entry.get("card", {})
@@ -1729,7 +1792,7 @@ def generate_card():
                 "filename": image_filename,
                 "cat_source": cat_source,
                 "card": card_payload,
-                "cache_key": cache_key,  # 🟡 1001修改01：記錄本次使用的報告/測驗組合避免取用過期圖卡
+                "cache_key": cache_key,  # ?? 1001修改01：記錄本次使用的報告/測驗組合避免取用過期圖卡
             }
 
         card_image_url = url_for("static", filename=f"cat_cards/{image_filename}")

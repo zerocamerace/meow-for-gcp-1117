@@ -1,6 +1,2 @@
-flask==3.0.3
-firebase-admin==6.5.0
-Pillow
-google-genai
-python-dotenv
-pdfplumber
+requests==2.32.5
+python-dotenv==1.0.1
