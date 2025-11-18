@@ -1027,6 +1027,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv(
     "FLASK_SECRET_KEY", "your-secret-key"
 )  # 從 .env 載入或使用預設值
+app.config.update(
+    SESSION_COOKIE_SECURE=True, # 只允許 HTTPS
+    SESSION_COOKIE_HTTPONLY=True, # JS 不能讀 cookie
+    SESSION_COOKIE_SAMESITE="Strict", # 防止跨站請求帶 cookie
+)
 logging.basicConfig(level=logging.DEBUG)
 FIREBASE_WEB_API_KEY = os.getenv('FIREBASE_WEB_API_KEY')
 app.before_request(_refresh_daily_points)
@@ -1372,30 +1377,54 @@ def register():
 def login():
     is_logged_in = "user_id" in session
 
-    def _localized_login_error(message: str, email: str) -> str:
-        """Convert Firebase login error messages or codes to user-friendly Traditional Chinese."""
-        code = (message or "").upper()
-        msg = (message or "").lower()
-        if (
-            "EMAIL_NOT_FOUND" in code
-            or "INVALID_LOGIN_CREDENTIALS" in code
-            or "no user record" in msg
-            or "invalid_login_credentials" in msg
-        ):
-            return "登入失敗：帳號或密碼有誤，請重新輸入。"
-        if "INVALID_PASSWORD" in code or "password is invalid" in msg:
-            return "登入失敗：帳號或密碼有誤，請重新輸入。"
-        if "TOO_MANY_ATTEMPTS" in code or "too many attempts" in msg:
-            return "登入失敗：嘗試次數過多，請稍後再試。"
-        if "USER_DISABLED" in code or "user disabled" in msg:
-            return "登入失敗：此帳號已被停用，請聯絡管理員。"
-        if "AUTH_SERVICE_NOT_CONFIGURED" in code:
-            return "登入失敗：尚未設定身份驗證服務，請通知系統管理員。"
-        if "AUTH_NETWORK_ERROR" in code:
-            return "登入失敗：驗證服務暫時無法使用，請稍後再試。"
-        if "AUTH_RESPONSE_INVALID" in code:
-            return "登入失敗：驗證結果格式異常，請稍後再試。"
-        return "登入失敗：系統目前忙碌，請稍後再試。"
+    def _localized_login_error(message: str, email: str) -> str:
+
+        """Convert Firebase login error messages or codes to user-friendly Traditional Chinese."""
+
+        code = (message or "").upper()
+
+        msg = (message or "").lower()
+
+        if (
+
+            "EMAIL_NOT_FOUND" in code
+
+            or "INVALID_LOGIN_CREDENTIALS" in code
+
+            or "no user record" in msg
+
+            or "invalid_login_credentials" in msg
+
+        ):
+
+            return "登入失敗：帳號或密碼有誤，請重新輸入。"
+
+        if "INVALID_PASSWORD" in code or "password is invalid" in msg:
+
+            return "登入失敗：帳號或密碼有誤，請重新輸入。"
+
+        if "TOO_MANY_ATTEMPTS" in code or "too many attempts" in msg:
+
+            return "登入失敗：嘗試次數過多，請稍後再試。"
+
+        if "USER_DISABLED" in code or "user disabled" in msg:
+
+            return "登入失敗：此帳號已被停用，請聯絡管理員。"
+
+        if "AUTH_SERVICE_NOT_CONFIGURED" in code:
+
+            return "登入失敗：尚未設定身份驗證服務，請通知系統管理員。"
+
+        if "AUTH_NETWORK_ERROR" in code:
+
+            return "登入失敗：驗證服務暫時無法使用，請稍後再試。"
+
+        if "AUTH_RESPONSE_INVALID" in code:
+
+            return "登入失敗：驗證結果格式異常，請稍後再試。"
+
+        return "登入失敗：系統目前忙碌，請稍後再試。"
+
     if request.method == "GET":
         session.pop("_flashes", None)
 
