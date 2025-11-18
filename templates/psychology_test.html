@@ -427,7 +427,7 @@
                         <!-- GALING 10/02 對話框尺寸調大 -->
                         <div class="flex items-center gap-3 chat-input-wrapper w-full">
                             <!-- 10/02Galing修改 自動偵測裝置 電腦/筆電Ctrl+Enter送出 -->
-                            <textarea id="message-input" rows="1" class="w-full p-3 border-gray-200 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] transition-all" placeholder="說點什麼吧... 按右邊按鈕送出訊息"></textarea>
+                            <textarea id="message-input" rows="1" maxlength="1000" class="w-full p-3 border-gray-200 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] transition-all" placeholder="說點什麼吧... 按右邊按鈕送出訊息"></textarea>
                             <!-- GALING 10/03 貓爪按鈕動畫 -->
                             <button onclick="sendMessage()" class="paw-button" id="send-button" type="button" aria-label="送出訊息">
                                 <span id="send-icon" class="send-icon paw">🐾</span>
@@ -535,6 +535,7 @@
         const magicOverlay = document.getElementById('magic-overlay'); // 🟡 1006 修改：魔法生成動畫覆蓋層
         const selectionModeCards = document.querySelectorAll('.selection-mode-card');
         const selectionBubbleEffects = [];
+        let messageLengthAlertShown = false;
 
         // --- App State ---
         const appState = {
@@ -673,6 +674,8 @@
 
 
 
+        const MAX_MESSAGE_CHARS = 1000;
+
         // GALING 調整喵奶奶頭像動畫 10/04
         const grandmaAvatarUrl = "{{ url_for('static', filename='grandma.jpg') }}";
         const reportAvatarUrl = "{{ url_for('static', filename='reporter.jpg') }}";
@@ -748,6 +751,15 @@
                 }
             });
             messageInput.addEventListener('input', () => {
+                if (messageInput.value.length > MAX_MESSAGE_CHARS) {
+                    if (!messageLengthAlertShown) {
+                        alert('Oops...字數超過1000字無法傳送唷');
+                        messageLengthAlertShown = true;
+                    }
+                    messageInput.value = messageInput.value.slice(0, MAX_MESSAGE_CHARS);
+                } else {
+                    messageLengthAlertShown = false;
+                }
                 messageInput.style.height = 'auto';
                 messageInput.style.height = (messageInput.scrollHeight) + 'px';
             });
@@ -980,6 +992,13 @@
         async function sendMessage(quickReplyText = null) {
             const text = quickReplyText || messageInput.value.trim();
             if (!text || appState.isLoading) return;
+            if (text.length > MAX_MESSAGE_CHARS) {
+                alert('Oops...字數超過1000字無法傳送唷');
+                if (!quickReplyText) {
+                    messageInput.focus();
+                }
+                return;
+            }
 
             sendButton.classList.add('is-sending');
             setTimeout(() => {

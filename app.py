@@ -14,7 +14,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore, storage, auth
 from firebase_admin.exceptions import FirebaseError
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import time
 import requests  # ?? 0929修改：呼叫外部貓圖來源
@@ -40,6 +40,19 @@ from google.genai import types as genai_types
 from dotenv import load_dotenv
 import json
 import re
+
+
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10MB
+ALLOWED_UPLOAD_EXTENSIONS = (".jpg", ".jpeg", ".png", ".pdf")
+ALLOWED_UPLOAD_MIMES = {
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+}
+MAX_USER_TEXT_CHARS = 1000
+OVER_LIMIT_MESSAGE = "Oops...字數超過1000字無法傳送唷"
+MAX_DAILY_CARD_GENERATIONS = 10
+CARD_LIMIT_MESSAGE = "今日生成次數已達上限，請明天再試。"
 
 
 def extract_json_from_response(text: str) -> dict:
@@ -288,6 +301,49 @@ def _safe_url(url: str | None) -> str | None:
     except ValueError:
         pass
     return None
+
+
+def _is_text_within_limit(text: str | None, limit: int = MAX_USER_TEXT_CHARS) -> bool:
+    if text is None:
+        return True
+    return len(text) <= limit
+
+
+def _user_messages_within_limit(conversation, limit: int = MAX_USER_TEXT_CHARS) -> bool:
+    if not isinstance(conversation, list):
+        return False
+    for entry in conversation:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("role") != "user":
+            continue
+        parts = entry.get("parts") or []
+        for part in parts:
+            if not isinstance(part, dict):
+                continue
+            text = part.get("text")
+            if text and len(text) > limit:
+                return False
+    return True
+
+
+def _evaluate_daily_limit(
+    user_doc: dict | None,
+    count_field: str,
+    date_field: str,
+    limit: int,
+) -> tuple[bool, int, str]:
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    data = user_doc or {}
+    last_date = data.get(date_field)
+    try:
+        daily_count = int(data.get(count_field) or 0)
+    except (TypeError, ValueError):
+        daily_count = 0
+    if last_date != today_str:
+        daily_count = 0
+    allowed = daily_count < limit
+    return allowed, daily_count, today_str
 
 
 def _load_font(size: int) -> ImageFont.ImageFont:
@@ -1034,13 +1090,6 @@ app.config.update(
 )
 logging.basicConfig(level=logging.DEBUG)
 FIREBASE_WEB_API_KEY = os.getenv('FIREBASE_WEB_API_KEY')
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10MB
-ALLOWED_UPLOAD_EXTENSIONS = (".jpg", ".jpeg", ".png", ".pdf")
-ALLOWED_UPLOAD_MIMES = {
-    "image/jpeg",
-    "image/png",
-    "application/pdf",
-}
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
 app.before_request(_refresh_daily_points)
 
@@ -1511,6 +1560,7 @@ def delete_account():
         return redirect(url_for("login"))
 
     user_id = session["user_id"]
+    user_ref = db.collection("users").document(user_id)
     try:
         user_doc = db.collection("users").document(user_id).get()
         user_data = user_doc.to_dict() if user_doc.exists else {}
@@ -1825,12 +1875,17 @@ def psychology_test():
             latest_health_report=latest_report_data,
         )
 
-    question1 = request.form.get("question1")
-    question2 = request.form.get("question2")
+    question1 = (request.form.get("question1") or "").strip()
+    question2 = (request.form.get("question2") or "").strip()
     if not question1 or not question2:
         flash("請回答所有問題！", "error")
         return render_template(
             "psychology_test.html", error="請回答所有問題", is_logged_in=True
+        )
+    if len(question1) > MAX_USER_TEXT_CHARS or len(question2) > MAX_USER_TEXT_CHARS:
+        flash(OVER_LIMIT_MESSAGE, "error")
+        return render_template(
+            "psychology_test.html", error=OVER_LIMIT_MESSAGE, is_logged_in=True
         )
 
     try:
@@ -1842,7 +1897,7 @@ def psychology_test():
             }
         )
         logging.debug(f"Psychology test saved to Firestore for uid: {user_id}")
-        flash("測驗提交成功！請生成貓咪圖卡。", "success")
+        flash("表單已送出！歡迎前往生成貓咪圖卡。", "success")
         return redirect(url_for("generate_card"))
     except Exception as e:
         logging.error(f"Psychology test error: {str(e)}")
@@ -1865,10 +1920,15 @@ def chat_api():
         return jsonify({"error": "缺少必要的參數"}), 400
 
     try:
-        logging.debug(f"Received conversationHistory: {data['conversationHistory']}")
+        conversation_history = data.get("conversationHistory")
+        if not isinstance(conversation_history, list):
+            return jsonify({"error": "conversationHistory 格式不正確"}), 400
+        if not _user_messages_within_limit(conversation_history):
+            return jsonify({"error": OVER_LIMIT_MESSAGE}), 400
+        logging.debug(f"Received conversationHistory: {conversation_history}")
 
         contents = _build_genai_contents(
-            data.get("systemInstruction"), data["conversationHistory"]
+            data.get("systemInstruction"), conversation_history
         )
 
         if not contents:
@@ -1937,12 +1997,17 @@ def report_api():
         return jsonify({"error": "缺少必要的參數"}), 400
 
     try:
+        conversation_history = data.get("conversationHistory")
+        if not isinstance(conversation_history, list):
+            return jsonify({"error": "conversationHistory 格式不正確"}), 400
+        if not _user_messages_within_limit(conversation_history):
+            return jsonify({"error": OVER_LIMIT_MESSAGE}), 400
         logging.debug(
-            f"Received conversationHistory for report: {len(data['conversationHistory'])} messages"
+            f"Received conversationHistory for report: {len(conversation_history)} messages"
         )
 
         contents = _build_genai_contents(
-            data.get("systemInstruction"), data["conversationHistory"]
+            data.get("systemInstruction"), conversation_history
         )
 
         if not contents:
@@ -2078,6 +2143,21 @@ def generate_card():
 
     try:
         user_id = session["user_id"]
+        user_ref = db.collection("users").document(user_id)
+        try:
+            user_doc_data = user_ref.get().to_dict() or {}
+        except Exception as exc:
+            logging.warning("Failed to load user doc for card limit: %s", exc)
+            user_doc_data = {}
+        allowed, card_count, today_str = _evaluate_daily_limit(
+            user_doc_data,
+            "daily_card_generations_count",
+            "last_card_generation_date",
+            MAX_DAILY_CARD_GENERATIONS,
+        )
+        if not allowed:
+            flash(CARD_LIMIT_MESSAGE, "error")
+            return redirect(url_for("home"))
         # ?? 修改：同樣改為查詢頂層 health_reports
         health_report_docs = (
             db.collection("health_reports").where("user_uid", "==", user_id).stream()
@@ -2176,6 +2256,17 @@ def generate_card():
         card_payload["image_url"] = card_image_url
         card_payload["cat_image_source"] = cat_source
         card_payload.setdefault("warnings", warnings)
+
+        try:
+            user_ref.set(
+                {
+                    "daily_card_generations_count": card_count + 1,
+                    "last_card_generation_date": today_str,
+                },
+                merge=True,
+            )
+        except Exception as exc:
+            logging.warning("Failed to update card count for %s: %s", user_id, exc)
 
         return render_template(
             "generate_card.html",
