@@ -14,6 +14,8 @@ import firebase_admin
 from firebase_admin import credentials, firestore, storage, auth
 from firebase_admin.exceptions import FirebaseError
 import os
+import socket
+import ipaddress
 from datetime import datetime, timezone
 import logging
 import time
@@ -291,16 +293,61 @@ def _refresh_daily_points():
 
 
 # ?? 0929修改：共用工具
+_DISALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
+def _is_public_host(hostname: str) -> bool:
+    """Return True if hostname resolves only to public IPs."""
+    def _ip_allowed(ip_obj: ipaddress._BaseAddress) -> bool:
+        return not (
+            ip_obj.is_private
+            or ip_obj.is_loopback
+            or ip_obj.is_multicast
+            or ip_obj.is_link_local
+            or ip_obj.is_reserved
+        )
+
+    try:
+        ip_obj = ipaddress.ip_address(hostname)
+        return _ip_allowed(ip_obj)
+    except ValueError:
+        try:
+            results = socket.getaddrinfo(hostname, None)
+        except socket.gaierror:
+            return False
+        for result in results:
+            ip_str = result[4][0]
+            try:
+                ip_obj = ipaddress.ip_address(ip_str)
+            except ValueError:
+                return False
+            if not _ip_allowed(ip_obj):
+                return False
+        return True
+
+
 def _safe_url(url: str | None) -> str | None:
     if not url:
         return None
     try:
         parsed = urlparse(url)
-        if parsed.scheme in {"http", "https"}:
-            return url
     except ValueError:
-        pass
-    return None
+        return None
+
+    if parsed.scheme not in {"http", "https"}:
+        return None
+
+    host = parsed.hostname
+    if not host:
+        return None
+
+    if host.lower() in _DISALLOWED_HOSTS:
+        return None
+
+    if not _is_public_host(host):
+        return None
+
+    return parsed.geturl()
 
 
 def _is_text_within_limit(text: str | None, limit: int = MAX_USER_TEXT_CHARS) -> bool:
