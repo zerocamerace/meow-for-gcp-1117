@@ -1,4 +1,6 @@
 from flask import Flask, render_template
+import os
+from flask import Flask, render_template
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
@@ -108,4 +110,6 @@ def result(user_uid):
     return render_template("result.html", card_url=cat_key)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_enabled = str(os.getenv("FLASK_DEBUG", "0")).lower() in {"1", "true", "yes", "on"}
+    port = int(os.getenv("FLASK_PORT", "5001"))
+    app.run(debug=debug_enabled, port=port)

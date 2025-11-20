@@ -1,4 +1,5 @@
-﻿from flask import (
+﻿# -*- coding: utf-8 -*-
+from flask import (
     Flask,
     render_template,
     request,
@@ -2420,7 +2421,7 @@ def inject_badge_context():
 
 
 if __name__ == "__main__":
-    # 若要列印路由表，可在這裡印出（避免 Flask 3 的 before_first_request）
-    # logging.debug("URL Map:\n" + "\n".join([str(r) for r in app.url_map.iter_rules()]))
-    app.run(debug=True, port=5001)
-
+    # 若要列出路由可在此紀錄
+    debug_enabled = str(os.getenv("FLASK_DEBUG", "0")).lower() in {"1", "true", "yes", "on"}
+    port = int(os.getenv("FLASK_PORT", "5001"))
+    app.run(debug=debug_enabled, port=port)
