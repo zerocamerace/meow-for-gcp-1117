@@ -25,9 +25,16 @@ import random  # ?? 0929修改：貓咪圖卡風格隨機與備援使用
 import textwrap  # ?? 0929修改：圖卡文字換行處理
 import hashlib  # ?? 0929修改：圖卡輸出避免檔名衝突
 import imghdr  # ?? 0929修改：驗證下載圖片格式
+import numpy as np
 from pathlib import Path  # ?? 0929修改：設定圖卡輸出路徑
 from io import BytesIO  # ?? 0929修改：處理圖片位元組資料
 from urllib.parse import urlparse  # ?? 0929修改：驗證圖片網址安全性
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:  # pragma: no cover
+    SentenceTransformer = None
+
 
 from PIL import (
     Image,
@@ -408,7 +415,72 @@ DEFAULT_SCENARIOS = {
 }
 
 
+def _semantic_movie_recommendations(
+    psychology: dict | None, style_key: str, top_n: int = 2
+) -> list[dict[str, str]]:
+    if not MOVIE_EMBEDDING_INDEX:
+        _rebuild_movie_embedding_index()
+    if not MOVIE_EMBEDDING_INDEX:
+        return []
+    embedder = _get_sentence_embedder()
+    if not embedder:
+        return []
+    psychology = psychology or {}
+    components = []
+    summary = psychology.get("summary") or psychology.get("description") or ""
+    if summary:
+        components.append(summary)
+    keywords = psychology.get("keywords") or []
+    if keywords:
+        components.append("、".join(keywords))
+    scenario_tags = DEFAULT_SCENARIOS.get(style_key) or STYLE_HINT_TAGS.get(style_key) or []
+    if scenario_tags:
+        components.append("希望獲得：" + "、".join(scenario_tags))
+    if not components:
+        return []
+    query_text = " ".join(components)
+    try:
+        query_vec = embedder.encode([query_text], normalize_embeddings=True)[0]
+    except Exception as exc:
+        logging.error("Failed to encode movie query embedding: %s", exc)
+        return []
+    scored = []
+    for vec, movie in MOVIE_EMBEDDING_INDEX:
+        score = float(np.dot(query_vec, vec))
+        scored.append((score, movie))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    if scored:
+        logging.debug(
+            "Semantic movie RAG top candidates: %s",
+            [
+                {"title": movie["title"], "score": round(score, 3)}
+                for score, movie in scored[:5]
+            ],
+        )
+    selected = [
+        {"title": movie["title"], "reason": movie.get("reason", "")}
+        for score, movie in scored[:top_n]
+        if score > 0 and movie
+    ]
+    if selected:
+        logging.debug(
+            "Semantic movie RAG selected for style=%s: %s",
+            style_key,
+            [movie["title"] for movie in selected],
+        )
+    return selected
+
+
 def _rag_movie_recommendations(
+    psychology: dict | None, style_key: str, top_n: int = 2
+) -> list[dict[str, str]]:
+    semantic = _semantic_movie_recommendations(psychology, style_key, top_n)
+    if semantic:
+        return semantic
+    return _keyword_movie_recommendations(psychology, style_key, top_n)
+
+
+def _keyword_movie_recommendations(
     psychology: dict | None, style_key: str, top_n: int = 2
 ) -> list[dict[str, str]]:
     if not MOVIE_KNOWLEDGE_BASE:
@@ -1383,6 +1455,59 @@ def _load_movie_recommendations() -> list[dict]:
 
 
 MOVIE_KNOWLEDGE_BASE = _load_movie_recommendations()
+_SENTENCE_EMBEDDER = None
+MOVIE_EMBEDDING_INDEX: list[tuple[np.ndarray, dict]] = []
+
+
+def _get_sentence_embedder():
+    global _SENTENCE_EMBEDDER
+    if SentenceTransformer is None:
+        logging.warning("SentenceTransformer not available; semantic movie recommendations disabled.")
+        return None
+    if _SENTENCE_EMBEDDER is None:
+        try:
+            _SENTENCE_EMBEDDER = SentenceTransformer("sentence-transformers/all-MiniLM-L12-v2")
+            logging.debug("SentenceTransformer model loaded for semantic movie search.")
+        except Exception as exc:
+            logging.error("Failed to load sentence-transformers model: %s", exc)
+            _SENTENCE_EMBEDDER = False
+            return None
+    if _SENTENCE_EMBEDDER is False:
+        return None
+    return _SENTENCE_EMBEDDER
+
+
+def _rebuild_movie_embedding_index():
+    MOVIE_EMBEDDING_INDEX.clear()
+    if not MOVIE_KNOWLEDGE_BASE:
+        return
+    embedder = _get_sentence_embedder()
+    if not embedder:
+        return
+    texts = []
+    metadata = []
+    for movie in MOVIE_KNOWLEDGE_BASE:
+        parts = [
+            movie.get("title") or "",
+            movie.get("english_title") or "",
+            " ".join(movie.get("tags") or []),
+            movie.get("reason") or "",
+        ]
+        texts.append(" ".join(part for part in parts if part))
+        metadata.append(movie)
+    if not texts:
+        return
+    try:
+        embeddings = embedder.encode(texts, normalize_embeddings=True, batch_size=32)
+    except Exception as exc:
+        logging.error("Failed to encode movie embeddings: %s", exc)
+        return
+    for vec, movie in zip(embeddings, metadata):
+        MOVIE_EMBEDDING_INDEX.append((np.array(vec, dtype=np.float32), movie))
+    logging.debug("Movie embedding index built with %d entries.", len(MOVIE_EMBEDDING_INDEX))
+
+
+_rebuild_movie_embedding_index()
 
 CAT_FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=1000&q=80",
