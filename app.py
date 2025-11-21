@@ -204,7 +204,10 @@ def _authenticate_with_password(email: str, password: str) -> str:
 
     firebase_uid = data.get("localId")
     if not firebase_uid:
-        logging.error("Firebase auth response missing localId: %s", data)
+        logging.error(
+            "Firebase auth response missing localId; keys=%s",
+            list(data.keys()) if isinstance(data, dict) else type(data).__name__,
+        )
         raise RuntimeError("AUTH_RESPONSE_INVALID")
     return firebase_uid
 
