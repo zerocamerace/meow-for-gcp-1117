@@ -56,6 +56,12 @@ MAX_USER_TEXT_CHARS = 1000
 OVER_LIMIT_MESSAGE = "Oops...字數超過1000字無法傳送唷"
 MAX_DAILY_CARD_GENERATIONS = 10
 CARD_LIMIT_MESSAGE = "今日生成次數已達上限，請明天再試。"
+CARD_LIMIT_MODAL_TEXT = "Oops...您今日已達生成圖片次數上限，請明天再過來唷！"
+RECOMMENDATION_LABELS = {
+    "movie": "推薦電影",
+    "music": "推薦音樂",
+    "activity": "推薦活動",
+}
 
 
 def extract_json_from_response(text: str) -> dict:
@@ -355,6 +361,159 @@ def _safe_url(url: str | None) -> str | None:
         return None
 
     return parsed.geturl()
+
+
+def _tokenize_text(text: str) -> list[str]:
+    if not text:
+        return []
+    lowered = str(text).lower()
+    return [token for token in re.split(r"[\s,、/，。!?！？」「]+", lowered) if token]
+
+
+STYLE_HINT_TAGS = {
+    "bright": ["冒險", "療癒", "溫暖", "夢想", "勇氣", "希望"],
+    "steady": ["日常", "平穩", "家庭", "陪伴", "放鬆", "安定"],
+    "healer": ["療癒", "修復", "心靈", "安定", "重建", "擁抱"],
+}
+
+KEYWORD_SYNONYMS = {
+    "壓力": ["療癒", "放鬆", "溫柔"],
+    "疲憊": ["療癒", "溫暖"],
+    "失戀": ["愛情", "浪漫", "療癒"],
+    "失戀痛苦": ["浪漫", "療癒", "溫柔"],
+    "孤單": ["陪伴", "友情", "家庭"],
+    "家庭": ["家庭", "親情"],
+    "青春": ["成長", "夢想", "懷舊"],
+    "青春流逝": ["懷舊", "夢想", "成長"],
+    "重生": ["夢想", "勇氣"],
+    "恐懼": ["勇氣", "冒險"],
+    "焦慮": ["療癒", "放鬆"],
+    "悲傷": ["療癒", "溫暖"],
+    "委屈": ["療癒", "陪伴"],
+    "期待": ["浪漫", "冒險"],
+    "友情": ["友情", "家庭"],
+    "療癒": ["療癒", "溫暖"],
+    "冒險": ["冒險", "勇氣"],
+    "成長": ["成長", "夢想"],
+    "愛情": ["浪漫", "愛情"],
+    "自我價值": ["勵志", "成長"],
+    "身體壓力": ["療癒", "放鬆"],
+    "情緒困惑": ["療癒", "心靈"],
+}
+
+DEFAULT_SCENARIOS = {
+    "bright": ["冒險", "夢想", "勇氣", "成長"],
+    "steady": ["家庭", "友情", "溫暖", "親情"],
+    "healer": ["療癒", "溫柔", "陪伴", "浪漫"],
+}
+
+
+def _rag_movie_recommendations(
+    psychology: dict | None, style_key: str, top_n: int = 2
+) -> list[dict[str, str]]:
+    if not MOVIE_KNOWLEDGE_BASE:
+        return []
+    user_tokens: set[str] = set()
+    psychology = psychology or {}
+    for kw in psychology.get("keywords") or []:
+        user_tokens.update(_tokenize_text(kw))
+    summary = psychology.get("summary") or psychology.get("description") or ""
+    user_tokens.update(_tokenize_text(summary))
+    mood_score = psychology.get("combined_score") or psychology.get("mind_score")
+    health_score = psychology.get("health_score")
+    if mood_score is not None:
+        mood_score = float(mood_score)
+        if mood_score >= 80:
+                user_tokens.update(["鼓舞", "冒險", "夢想"])
+        elif mood_score <= 50:
+            user_tokens.update(["療癒", "溫柔", "陪伴"])
+        else:
+            user_tokens.update(["日常", "放鬆"])
+    if health_score is not None:
+        health_score = float(health_score)
+        if health_score < 60:
+            user_tokens.update(["重生", "修復", "心靈"])
+    enriched = set(user_tokens)
+    for token in list(user_tokens):
+        for key, synonyms in KEYWORD_SYNONYMS.items():
+            if key in token:
+                enriched.update(syn.lower() for syn in synonyms)
+    user_tokens = {tok.lower() for tok in enriched if tok}
+    style_tokens = {tag.lower() for tag in STYLE_HINT_TAGS.get(style_key, [])}
+
+    def matches_tokens(movie, token_set):
+        if not token_set:
+            return []
+        movie_tags = [tag.lower() for tag in movie.get("tags", [])]
+        matched = [tag for tag in movie_tags if any(token in tag for token in token_set)]
+        return matched
+
+    def filter_pool(token_set):
+        if not token_set:
+            return []
+        return [
+            movie
+            for movie in MOVIE_KNOWLEDGE_BASE
+            if matches_tokens(movie, token_set)
+        ]
+
+    candidate_pool = filter_pool(user_tokens)
+    tokens = user_tokens.copy()
+    if not candidate_pool:
+        candidate_pool = filter_pool(style_tokens)
+        tokens = style_tokens.copy()
+    if not candidate_pool:
+        fallback_tokens = {tag.lower() for tag in DEFAULT_SCENARIOS.get(style_key, [])}
+        tokens = fallback_tokens or set()
+        candidate_pool = filter_pool(tokens) if tokens else MOVIE_KNOWLEDGE_BASE.copy()
+    if not candidate_pool:
+        candidate_pool = MOVIE_KNOWLEDGE_BASE.copy()
+        tokens = set()
+
+    results = []
+    for movie in candidate_pool:
+        tags = [tag.lower() for tag in movie.get("tags", [])]
+        reason_text = movie.get("reason", "").lower()
+        if not tokens:
+            score = 1.0
+        else:
+            score = 0.0
+            for tag in tags:
+                if any(token in tag for token in tokens):
+                    score += 2.0
+            for token in tokens:
+                if token and token in reason_text:
+                    score += 1.0
+        for tag in tags:
+            for token in tokens:
+                if token and token == tag:
+                    score += 1.0
+                    break
+        if score <= 0:
+            score = 0.1
+        results.append(
+            (
+                score,
+                {"title": movie["title"], "reason": movie.get("reason", "")},
+            )
+        )
+    results.sort(key=lambda item: item[0], reverse=True)
+    if results:
+        logging.debug(
+            "Movie RAG top candidates: %s",
+            [
+                {"title": entry[1]["title"], "score": round(entry[0], 2)}
+                for entry in results[:5]
+            ],
+        )
+    selected = [item[1] for item in results[:top_n]]
+    logging.debug(
+        "Movie RAG selected titles for style=%s tokens=%s: %s",
+        style_key,
+        sorted(tokens),
+        [movie["title"] for movie in selected],
+    )
+    return selected
 
 
 def _mask_email(email: str | None) -> str:
@@ -862,54 +1021,68 @@ CAT_STYLES = {
 }
 
 # ?? 1007 修改『圖卡生成推薦』：預設影音與活動建議
-def _fallback_recommendations(style_key: str) -> list[dict[str, str]]:
+def _fallback_recommendations(style_key: str) -> dict[str, dict[str, str]]:
     style = CAT_STYLES.get(style_key, {})
     curations = style.get("curations", {})
     defaults = {
-        "movie": ("《向左走向右走》", "浪漫淺嘗的節奏，陪你梳理心情"),
-        "music": ("Bossa Nova 咖啡廳", "溫柔節拍讓心慢慢沉靜"),
-        "activity": ("傍晚散步", "換個場景，讓腦袋短暫放空"),
+        "movie": ("《翻滾吧！阿信》", "熱血卻富含體貼的勵志故事，帶來向上的動力"),
+        "music": ("Bossa Nova 輕爵士", "柔軟又帶點陽光氣息，讓心情慢慢舒展"),
+        "activity": ("療癒手作時光", "用雙手專心創作，讓注意力回到當下"),
     }
-    mapping = [
-        ("movie", "推薦電影"),
-        ("music", "推薦音樂"),
-        ("activity", "推薦活動"),
-    ]
-    recommendations = []
-    for key, label in mapping:
+    recommendations = {}
+    for key in ("movie", "music", "activity"):
         title, reason = curations.get(key, defaults[key])
-        recommendations.append({"label": label, "title": title, "reason": reason})
+        recommendations[key] = {
+            "label": RECOMMENDATION_LABELS[key],
+            "title": title,
+            "reason": reason,
+        }
     return recommendations
 
-# ?? 1007 修改『圖卡生成推薦』：整合 AI 與預設推薦
-def _normalize_recommendations(ai_payload: dict | None, style_key: str) -> list[dict[str, str]]:
+def _normalize_recommendations(
+    ai_payload: dict | None, style_key: str, psychology: dict | None
+) -> list[dict[str, str]]:
     payload = ai_payload or {}
     raw_recs = payload.get("recommendations") or {}
-    mapping = [
-        ("movie", "推薦電影"),
-        ("music", "推薦音樂"),
-        ("activity", "推薦活動"),
-    ]
-    fallback_list = _fallback_recommendations(style_key)
+    fallback_map = _fallback_recommendations(style_key)
+    movie_candidates = _rag_movie_recommendations(psychology, style_key, top_n=2)
     normalized = []
-    for key, label in mapping:
-        source = raw_recs.get(key) if isinstance(raw_recs, dict) else None
+    for key in ("movie", "music", "activity"):
+        label = RECOMMENDATION_LABELS[key]
         title = ""
         reason = ""
-        if isinstance(source, dict):
-            title = str(source.get("title") or "").strip()
-            reason = str(source.get("reason") or "").strip()
+        if key == "movie" and movie_candidates:
+            candidate = movie_candidates.pop(0)
+            title = candidate.get("title", "").strip()
+            reason = candidate.get("reason", "").strip()
+        else:
+            source = raw_recs.get(key) if isinstance(raw_recs, dict) else None
+            if isinstance(source, dict):
+                title = str(source.get("title") or "").strip()
+                reason = str(source.get("reason") or "").strip()
         if not title or not reason:
-            fallback = next((item for item in fallback_list if item["label"] == label), None)
+            fallback = fallback_map.get(key)
             if fallback:
                 title = title or fallback["title"]
                 reason = reason or fallback["reason"]
         normalized.append({"label": label, "title": title, "reason": reason})
-    if len(normalized) > 2:
-        random.shuffle(normalized)
-        normalized = normalized[:2]  # ?? 1007 修改圖卡：僅呈現兩則建議
-    return normalized
-
+    movie_entry = next(
+        (
+            item
+            for item in normalized
+            if item["label"] == RECOMMENDATION_LABELS["movie"] and item["title"]
+        ),
+        None,
+    )
+    others = [item for item in normalized if item is not movie_entry and item["title"]]
+    random.shuffle(others)
+    ordered = []
+    if movie_entry:
+        ordered.append(movie_entry)
+    ordered.extend(others)
+    if not ordered:
+        ordered = list(fallback_map.values())
+    return ordered[:2] if len(ordered) > 2 else ordered
 
 def build_cat_card(report: dict, psychology: dict):
     """根據健康與心理測驗資料建立貓卡內容。"""  # ?? 0929修改：組裝貓卡資料
@@ -985,7 +1158,7 @@ def build_cat_card(report: dict, psychology: dict):
             {"label": "陪伴力", "value": f"{companionship}%"},
             {"label": "穩定度", "value": f"{stability}%"},
         ],  # 前端不再顯示分數，但保留結構以利後續調整
-        "recommendations": _normalize_recommendations(ai_payload, style_key),  # ?? 1007 修改『圖卡生成推薦』：加入影音與活動建議
+        "recommendations": _normalize_recommendations(ai_payload, style_key, psychology),  # ?? 1007 修改『圖卡生成推薦』：加入影音與活動建議
         "style_key": style_key,
         "palette": style.get("palette"),
         "keywords_list": model_keywords,
@@ -1174,6 +1347,42 @@ app.before_request(_refresh_daily_points)
 BASE_DIR = Path(__file__).resolve().parent
 CAT_CARD_DIR = BASE_DIR / "static" / "cat_cards"
 CAT_CARD_DIR.mkdir(parents=True, exist_ok=True)
+MOVIE_DATA_PATH = BASE_DIR / "movie.json"
+
+
+def _load_movie_recommendations() -> list[dict]:
+    if not MOVIE_DATA_PATH.exists():
+        logging.warning("Movie knowledge base not found at %s", MOVIE_DATA_PATH)
+        return []
+    try:
+        with MOVIE_DATA_PATH.open("r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception as exc:
+        logging.warning("Failed to load movie knowledge base: %s", exc)
+        return []
+    entries = raw.get("movie_recommendations") if isinstance(raw, dict) else raw
+    normalized = []
+    for entry in entries or []:
+        title = str(entry.get("title") or "").strip()
+        if not title:
+            continue
+        normalized.append(
+            {
+                "title": title,
+                "english_title": str(entry.get("english_title") or "").strip(),
+                "tags": [
+                    str(tag).strip()
+                    for tag in entry.get("tags", [])
+                    if isinstance(tag, str) and tag.strip()
+                ],
+                "reason": str(entry.get("reason") or "").strip(),
+            }
+        )
+    logging.debug("Loaded %d movie recommendations", len(normalized))
+    return normalized
+
+
+MOVIE_KNOWLEDGE_BASE = _load_movie_recommendations()
 
 CAT_FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=1000&q=80",
@@ -1353,7 +1562,20 @@ def proxy_image():
 @app.route("/")
 def home():
     is_logged_in = "user_id" in session
-    return render_template("home.html", is_logged_in=is_logged_in)
+    show_card_limit_modal = session.pop("show_card_limit_modal", False)
+    card_limit_modal_text = None
+    if show_card_limit_modal:
+        card_limit_modal_text = session.pop(
+            "card_limit_modal_text", CARD_LIMIT_MODAL_TEXT
+        )
+    else:
+        session.pop("card_limit_modal_text", None)
+    return render_template(
+        "home.html",
+        is_logged_in=is_logged_in,
+        show_card_limit_modal=show_card_limit_modal,
+        card_limit_modal_text=card_limit_modal_text,
+    )
 
 
 @app.route("/profile", methods=["GET", "POST"])
@@ -2284,6 +2506,8 @@ def generate_card():
         )
         if not allowed:
             flash(CARD_LIMIT_MESSAGE, "error")
+            session["show_card_limit_modal"] = True
+            session["card_limit_modal_text"] = CARD_LIMIT_MODAL_TEXT
             return redirect(url_for("home"))
         # ?? 修改：同樣改為查詢頂層 health_reports
         health_report_docs = (

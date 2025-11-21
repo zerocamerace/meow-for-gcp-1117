@@ -145,6 +145,66 @@
                 background-color: rgba(255, 255, 255, 0.9);
                 transform: scale(1.2);
             }
+            .limit-modal-backdrop {
+                position: fixed;
+                inset: 0;
+                background: rgba(44, 35, 28, 0.55);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                z-index: 9999;
+            }
+            .limit-modal-card {
+                background: linear-gradient(160deg, #fffaf5 0%, #fbe3d1 100%);
+                border-radius: 20px;
+                max-width: 380px;
+                width: 100%;
+                padding: 28px 28px 24px;
+                box-shadow: 0 18px 40px rgba(47, 33, 23, 0.25);
+                text-align: center;
+                position: relative;
+                border: 1px solid rgba(250, 211, 187, 0.6);
+            }
+            .limit-modal-card h3 {
+                margin: 0 0 12px;
+                font-size: 22px;
+                color: #5b4032;
+                letter-spacing: 0.5px;
+            }
+            .limit-modal-message {
+                font-size: 16px;
+                color: #4a3426;
+                line-height: 1.6;
+                margin-bottom: 18px;
+            }
+            .limit-modal-close {
+                position: absolute;
+                top: 14px;
+                right: 14px;
+                background: transparent;
+                border: none;
+                font-size: 20px;
+                cursor: pointer;
+                color: #a07864;
+            }
+            .limit-modal-close:focus {
+                outline: 2px solid #f4c7b1;
+                outline-offset: 2px;
+            }
+            .limit-modal-action {
+                border: none;
+                background: linear-gradient(135deg, #f4d7c3 0%, #e8c3ad 100%);
+                color: #4d3528;
+                font-weight: 600;
+                padding: 10px 28px;
+                border-radius: 9999px;
+                cursor: pointer;
+                box-shadow: 0 8px 18px rgba(230, 163, 133, 0.35);
+            }
+            .limit-modal-action:hover {
+                background: linear-gradient(135deg, #ebcdb7 0%, #dfb49a 100%);
+            }
             .material-symbols-outlined {
                 font-family: 'Material Symbols Outlined';
                 font-weight: normal;
@@ -582,6 +642,41 @@
                 </footer>
             </div>
         </div>
+        {% if show_card_limit_modal and card_limit_modal_text %}
+        <div class="limit-modal-backdrop" id="card-limit-modal" role="alertdialog" aria-modal="true" aria-live="assertive">
+            <div class="limit-modal-card">
+                <button type="button" class="limit-modal-close" aria-label="關閉提醒" data-card-limit-dismiss>×</button>
+                <h3>溫馨提醒</h3>
+                <p class="limit-modal-message">{{ card_limit_modal_text }}</p>
+                <button type="button" class="limit-modal-action" data-card-limit-dismiss>知道了</button>
+            </div>
+        </div>
+        <script>
+            (function () {
+                const modal = document.getElementById('card-limit-modal');
+                if (!modal) {
+                    return;
+                }
+                const closeModal = () => {
+                    modal.style.opacity = '0';
+                    modal.style.pointerEvents = 'none';
+                    setTimeout(() => {
+                        if (modal && modal.parentNode) {
+                            modal.parentNode.removeChild(modal);
+                        }
+                    }, 200);
+                };
+                modal.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                });
+                modal.querySelectorAll('[data-card-limit-dismiss]').forEach((btn) => {
+                    btn.addEventListener('click', closeModal);
+                });
+            })();
+        </script>
+        {% endif %}
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const carousel = document.querySelector('[data-carousel="home"]');
