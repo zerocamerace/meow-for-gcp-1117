@@ -606,6 +606,14 @@ def _mask_email(email: str | None) -> str:
         masked_local = f"{local_part[0]}***{local_part[-1]}"
     return f"{masked_local}@{domain_part}"
 
+def _mask_uid(uid: str | None) -> str:
+    if not uid:
+        return ""
+    uid = str(uid)
+    if len(uid) <= 3:
+        return uid[0] + "***" if uid else ""
+    return f"{uid[:2]}***{uid[-2:]}"
+
 
 def _form_keys(form_data) -> list[str]:
     try:
@@ -2128,7 +2136,7 @@ def upload_health():
         return redirect(url_for("login"))
 
     user_id = session["user_id"]
-    logging.debug(f"Current user_id from session: {user_id}")
+    logging.debug("Current user_id from session: %s", _mask_uid(user_id))
 
     # ?? 修改開始：取得使用者生理性別
     user_gender = None
@@ -2136,13 +2144,13 @@ def upload_health():
         user_doc = db.collection("users").document(user_id).get()
         if not user_doc.exists:
             flash("找不到使用者資料！", "error")
-            logging.warning(f"User document not found for uid: {user_id}")
+            logging.warning("User document not found for uid: %s", _mask_uid(user_id))
             return redirect(url_for("register"))
         user_data = user_doc.to_dict()
         user_gender = user_data.get("gender")
         if not user_gender:
             flash("請先完成註冊並提供生理性別資料！", "error")
-            logging.warning(f"User gender missing for uid: {user_id}")
+            logging.warning("User gender missing for uid: %s", _mask_uid(user_id))
             return redirect(url_for("register"))
         logging.debug(f"Retrieved user gender from Firestore: {user_gender}")
     except Exception as e:
