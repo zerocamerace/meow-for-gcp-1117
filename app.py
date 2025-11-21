@@ -221,7 +221,7 @@ def _delete_user_health_reports(user_id: str):
         for doc in reports:
             doc.reference.delete()
     except Exception as exc:
-        logging.warning("Failed to delete health reports for %s: %s", user_id, exc)
+        logging.warning("Failed to delete health reports for %s: %s", _mask_uid(user_id), exc)
 
 
 def _delete_user_psychology_tests(user_id: str):
@@ -232,7 +232,7 @@ def _delete_user_psychology_tests(user_id: str):
         for doc in tests:
             doc.reference.delete()
     except Exception as exc:
-        logging.warning("Failed to delete psychology tests for %s: %s", user_id, exc)
+        logging.warning("Failed to delete psychology tests for %s: %s", _mask_uid(user_id), exc)
 
 
 def _delete_user_storage_files(user_id: str):
@@ -1851,11 +1851,7 @@ def register():
         password = request.form.get("password")
         # ?? 修改開始：新增生理性別欄位
         gender = request.form.get("gender")
-        logging.debug(
-            "Parsed register data: email=%s, gender=%s",
-            _mask_email(email),
-            gender,
-        )
+        logging.debug("Parsed register data for email=%s", _mask_email(email))
 
         if not email or not password or not gender:
             flash("請輸入電子郵件、密碼和生理性別！", "error")
@@ -2152,9 +2148,9 @@ def upload_health():
             flash("請先完成註冊並提供生理性別資料！", "error")
             logging.warning("User gender missing for uid: %s", _mask_uid(user_id))
             return redirect(url_for("register"))
-        logging.debug(f"Retrieved user gender from Firestore: {user_gender}")
+        logging.debug("Retrieved user gender for uid %s", _mask_uid(user_id))
     except Exception as e:
-        logging.error(f"Failed to retrieve user gender: {str(e)}")
+        logging.error("Failed to retrieve user gender for %s: %s", _mask_uid(session.get("user_id")), e)
         flash("取得使用者資料失敗：請稍後再試。", "error")
         return redirect(url_for("login"))
     # ?? 修改結束
@@ -2169,7 +2165,7 @@ def upload_health():
             .stream()
         )
     except Exception as e:
-        logging.error(f"Failed to check existing health reports: {str(e)}")
+        logging.error("Failed to check existing health reports for %s: %s", _mask_uid(session.get("user_id")), e)
         existing_reports = []
 
     has_existing_report = bool(existing_reports)
@@ -2466,8 +2462,12 @@ def chat_api():
         return jsonify({"nextPrompt": reply})
 
     except Exception as e:
-        logging.error(f"Unexpected error in chat_api: {str(e)}, data: {data}")
-        return jsonify({"error": f"伺服器錯誤：{str(e)}"}), 500
+        logging.error(
+            "Unexpected error in chat_api for user %s: %s",
+            _mask_uid(session.get("user_id")),
+            e,
+        )
+        return jsonify({"error": "喵奶奶暫時有點忙碌，請稍後再試。"}), 500
 
 
 # 報告 API 端點（代理 Gemini API）
@@ -2610,11 +2610,19 @@ def save_psychology_scores():
                 "submit_time": SERVER_TIMESTAMP,
             }
         )
-        logging.debug(f"Psychology scores saved for user {user_id}, test {test_id}")
+        logging.debug(
+            "Psychology scores saved for user %s, test %s",
+            _mask_uid(user_id),
+            test_id,
+        )
         return jsonify({"status": "success", "test_id": test_id})
     except Exception as e:
-        logging.error(f"Error saving psychology scores: {str(e)}")
-        return jsonify({"error": f"儲存分數失敗：{str(e)}"}), 500
+        logging.error(
+            "Error saving psychology scores for %s: %s",
+            _mask_uid(session.get("user_id")),
+            e,
+        )
+        return jsonify({"error": "儲存心理測驗結果時發生錯誤，請稍後再試。"}), 500
 
 
 # 生成貓咪圖卡
@@ -2768,10 +2776,16 @@ def generate_card():
             is_logged_in=True,
         )
     except Exception as e:
-        logging.error(f"Generate card error: {str(e)}")
-        flash("生成圖卡失敗：請稍後再試。", "error")
+        logging.error(
+            "Generate card error for user %s: %s",
+            _mask_uid(session.get("user_id")),
+            e,
+        )
+        flash("生成貓咪圖卡失敗，請稍後再試。", "error")
         return render_template(
-            "generate_card.html", error=f"生成圖卡失敗：{str(e)}", is_logged_in=True
+            "generate_card.html",
+            error="生成圖卡失敗，請稍後再試。",
+            is_logged_in=True,
         )
 
 
