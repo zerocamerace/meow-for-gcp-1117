@@ -551,6 +551,27 @@
             hasShownMaxQaReminder: false
         };
 
+        const GRANDMA_OPENERS = [
+            "孩子啊，我坐在這裡呢。慢慢說，不用急，奶奶都在聽。",
+            "來，靠過來一點。你心裡有什麼風聲，我都願意陪你一起聽。",
+            "嗯，小寶貝，看起來有什麼掛在心上？跟奶奶說說，我在這裡。",
+            "別擔心，今天的時間都是你的。想從哪裡開始，我都陪你。",
+            "孩子，你的眉頭好像藏著故事。說給奶奶聽聽，好嗎？",
+            "我在呢，別怕打擾我。你願意的話，我想聽你心裡那些沒說出口的話。",
+            "走吧，我們一起坐下。你一句、我一句，把心裡的事情慢慢攤開。",
+            "孩子，你今天心裡的天氣如何？下雨也好，晴天也好，我都在。",
+            "你看起來好像撐了很久。來，跟奶奶說說，你累在哪裡？",
+            "沒關係，無論你現在什麼心情，都可以帶來。我會好好地聽。"
+        ];
+
+        function pickGrandmaOpening() {
+            if (!GRANDMA_OPENERS.length) {
+                return "孩子啊，你好呀。我是喵奶奶春蘭，慢慢說，我都在這裡。";
+            }
+            const idx = Math.floor(Math.random() * GRANDMA_OPENERS.length);
+            return GRANDMA_OPENERS[idx];
+        }
+
 
         // --- 10/04 Galing新增 Selection Card Bubble Effect ---
         function createSelectionBubbleEffect(card) {
@@ -984,11 +1005,11 @@
                 appState.conversationHistory.push({ role: 'model', parts: [{ text: JSON.stringify(initialModelMessage) }] });
 
             } else {
-                 addMessage('gemini', "孩子，你好啊。我是喵奶奶春蘭，心裡有什麼事，都可以跟我慢慢說。");
-                 appState.conversationHistory.push({ role: 'model', parts: [{ text: JSON.stringify({nextPrompt: "孩子，你好啊。我是喵奶奶春蘭，心裡有什麼事，都可以跟我慢慢說。"}) }] });
-            }
+                 const opener = pickGrandmaOpening();
+                 addMessage('gemini', opener);
+                 appState.conversationHistory.push({ role: 'model', parts: [{ text: JSON.stringify({nextPrompt: opener}) }] });
         }
-
+            }
         async function sendMessage(quickReplyText = null) {
             const text = quickReplyText || messageInput.value.trim();
             if (!text || appState.isLoading) return;
